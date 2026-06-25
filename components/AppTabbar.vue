@@ -1,5 +1,5 @@
 <template>
-  <nav class="fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-ink-900/90 backdrop-blur-xl pb-[var(--safe-bottom)]">
+  <nav class="fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-ink-900/90 backdrop-blur-xl" style="padding-bottom: var(--safe-bottom)">
     <div class="mx-auto flex w-full max-w-5xl items-center justify-around px-4">
       <NuxtLink
         v-for="t in tabs"
