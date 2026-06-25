@@ -130,11 +130,26 @@
         <div class="flex flex-wrap items-center gap-2">
           <h2 class="text-xl font-bold text-white">{{ current.name }}</h2>
           <MuscleBadge :group="current.muscle_group" />
+          <span
+            class="chip bg-white/5 text-slate-400"
+            :title="current.score_by === 'time' ? 'Por tiempo' : 'Por repeticiones'"
+          >
+            <AppIcon
+              :name="current.score_by === 'time' ? 'timer' : 'dumbbell'"
+              class="h-3.5 w-3.5"
+            />
+            {{ current.score_by === 'time' ? 'Tiempo' : 'Reps' }}
+          </span>
         </div>
         <p class="mt-1.5 text-sm text-slate-400">
-          {{ current.sets }} series · {{ current.reps_range }} reps · RPE
-          {{ current.rpe }}
-          <span v-if="current.time"> · {{ formatDuration(current.time) }}</span>
+          {{ current.sets }} series ·
+          <template v-if="current.score_by === 'reps'">
+            {{ current.reps_range }} reps
+          </template>
+          <template v-else>
+            {{ formatDuration(current.time) }} por serie
+          </template>
+          · RPE {{ current.rpe }}
           <span v-if="current.rest_between_sets">
             · descanso {{ formatDuration(current.rest_between_sets) }}</span
           >
@@ -164,9 +179,9 @@
           </button>
         </div>
 
-        <!-- Weight input for the active set -->
+        <!-- REPS MODE: weight input for the active set -->
         <div
-          v-if="activeSetIdxNum >= 0 && !setRestActive"
+          v-if="current.score_by === 'reps' && activeSetIdxNum >= 0 && !setRestActive"
           class="flex items-center gap-3 p-3 mt-4 border rounded-xl border-white/5 bg-ink-900/60"
         >
           <div class="flex flex-col">
@@ -199,6 +214,91 @@
             <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Completar
             serie
           </button>
+        </div>
+
+        <!-- TIME MODE: set timer for the active set -->
+        <div
+          v-else-if="current.score_by === 'time' && activeSetIdxNum >= 0 && !setRestActive && !setTimeActive"
+          class="mt-4 flex flex-col items-center gap-4 p-4 border rounded-xl border-white/5 bg-ink-900/60"
+        >
+          <div class="flex items-baseline gap-1">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500"
+              >Serie {{ activeSetIdxNum + 1 }} ·</span
+            >
+            <span class="font-mono text-sm text-slate-400">{{
+              formatDuration(current.time)
+            }}</span>
+          </div>
+          <button
+            class="btn-primary w-full"
+            @click="startSetTime(current, activeSetIdxNum)"
+          >
+            <AppIcon name="play" class="w-4 h-4" /> Iniciar temporizador
+          </button>
+        </div>
+
+        <!-- TIME MODE: running timer -->
+        <div
+          v-else-if="current.score_by === 'time' && setTimeActive"
+          class="flex flex-col items-center gap-4 p-5 mt-4 border rounded-xl border-sky-400/20 bg-sky-400/5"
+        >
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+            Serie {{ setTimeSetIdx + 1 }} en marcha
+          </span>
+          <div class="relative grid w-32 h-32 place-items-center">
+            <svg
+              class="absolute inset-0 w-32 h-32 -rotate-90"
+              viewBox="0 0 128 128"
+            >
+              <circle
+                cx="64"
+                cy="64"
+                r="58"
+                fill="none"
+                stroke="rgba(255,255,255,0.08)"
+                stroke-width="6"
+              />
+              <circle
+                cx="64"
+                cy="64"
+                r="58"
+                fill="none"
+                stroke="#38bdf8"
+                stroke-width="6"
+                stroke-linecap="round"
+                :stroke-dasharray="364.42"
+                :stroke-dashoffset="364.42 * (1 - setTimeCountdown.progress.value)"
+                style="transition: stroke-dashoffset 0.1s linear"
+              />
+            </svg>
+            <span
+              class="font-mono text-3xl font-bold text-white tabular-nums"
+              >{{ formatTime(setTimeCountdown.seconds.value) }}</span
+            >
+          </div>
+          <div class="grid grid-cols-2 gap-2 w-full">
+            <button
+              v-if="setTimeCountdown.running.value"
+              class="btn-ghost"
+              @click="setTimeCountdown.pause()"
+            >
+              <AppIcon name="pause" class="w-4 h-4" /> Pausar
+            </button>
+            <button
+              v-else
+              class="btn-ghost"
+              @click="setTimeCountdown.resume()"
+            >
+              <AppIcon name="play" class="w-4 h-4" /> Reanudar
+            </button>
+            <button
+              class="btn-primary"
+              @click="completeTimeSet(current, setTimeSetIdx)"
+            >
+              <AppIcon name="check" class="w-4 h-4" :stroke-width="3" />
+              {{ setTimeCountdown.finished.value ? 'Continuar' : 'Completar' }}
+            </button>
+          </div>
         </div>
 
         <!-- Show recorded weights for completed sets -->
@@ -431,11 +531,17 @@ const session = ref<RunSession | null>(null);
 const stopwatch = useStopwatch();
 const countdown = useCountdown();
 const restCountdown = useCountdown();
+const setTimeCountdown = useCountdown();
 
 // Inter-set rest state
 const setRestActive = ref(false);
 const setRestSetIdx = ref(0);
 const setRestItem = ref<Exercise | null>(null);
+
+// Time-based set state
+const setTimeActive = ref(false);
+const setTimeSetIdx = ref(-1);
+const setTimeItem = ref<Exercise | null>(null);
 
 // Weight tracking
 const currentWeight = ref(0);
@@ -494,6 +600,7 @@ onUnmounted(() => {
   flush();
   countdown.stop();
   restCountdown.stop();
+  setTimeCountdown.stop();
   stopwatch.stop();
 });
 
@@ -513,7 +620,7 @@ function setClass(item: Exercise, i: number) {
   if (s === "skipped")
     return "border-ember/50 bg-ember/10 text-ember line-through";
   const activeIdx = firstPendingSetIdx(item);
-  if (i === activeIdx && !setRestActive.value)
+  if (i === activeIdx && !setRestActive.value && !setTimeActive.value)
     return "border-sky-400/60 bg-sky-400/10 text-sky-300 animate-pulse";
   return "border-white/10 bg-ink-800 text-slate-600 opacity-50";
 }
@@ -526,7 +633,7 @@ function firstPendingSetIdx(item: Exercise): number {
 }
 
 function canClickSet(item: Exercise, i: number): boolean {
-  if (setRestActive.value) return false;
+  if (setRestActive.value || setTimeActive.value) return false;
   const s = setState(item, i);
   if (s !== "pending") return true;
   return i === firstPendingSetIdx(item);
@@ -605,6 +712,7 @@ watch(
 
 // Pre-fill weight when exercise changes
 watch(current, (c) => {
+  endSetTime();
   if (c?.type === "exercise") {
     const prev = lastWeights.value[c.name] ?? 0;
     currentWeight.value = prev;
@@ -619,9 +727,52 @@ function endSetRest() {
   setRestItem.value = null;
 }
 
+// ── Time-based set timer ──────────────────────────────────────────────
+function startSetTime(item: Exercise, setIdx: number) {
+  setTimeActive.value = true;
+  setTimeSetIdx.value = setIdx;
+  setTimeItem.value = item;
+  setTimeCountdown.start(item.time);
+}
+
+function endSetTime() {
+  setTimeCountdown.stop();
+  setTimeActive.value = false;
+  setTimeItem.value = null;
+  setTimeSetIdx.value = -1;
+}
+
+function completeTimeSet(item: Exercise, i: number) {
+  if (!session.value) return;
+  const k = setKey(item.id, i);
+  session.value.setStates[k] = "done";
+  if (currentWeight.value > 0) {
+    session.value.setWeights[k] = currentWeight.value;
+  }
+  lastWeights.value[item.name] = currentWeight.value;
+  endSetTime();
+  const isLastSet = i === item.sets - 1;
+  if (!isLastSet && item.rest_between_sets > 0) {
+    startSetRest(item, i);
+  }
+  if (isExerciseComplete(item)) session.value.itemStates[item.id] = "done";
+}
+
+// Auto-complete the set when the time countdown finishes
+watch(
+  () => setTimeCountdown.finished.value,
+  (done) => {
+    if (!done || !setTimeActive.value) return;
+    const item = setTimeItem.value;
+    const idx = setTimeSetIdx.value;
+    if (item && idx >= 0) completeTimeSet(item, idx);
+  },
+);
+
 function skipExercise(item: Exercise) {
   if (!session.value) return;
   endSetRest();
+  endSetTime();
   for (let i = 0; i < item.sets; i++) {
     const k = setKey(item.id, i);
     if ((session.value.setStates[k] ?? "pending") === "pending")
@@ -703,6 +854,7 @@ function flush() {
 watch(currentIdx, () => {
   seedCurrentRest();
   endSetRest();
+  endSetTime();
 });
 
 function finish() {
@@ -710,12 +862,14 @@ function finish() {
   flush();
   countdown.stop();
   restCountdown.stop();
+  setTimeCountdown.stop();
   if (session.value.startedAt) {
     session.value.durationMs =
       Date.now() - new Date(session.value.startedAt).getTime();
   }
   stopwatch.stop();
   endSetRest();
+  endSetTime();
   completeSession(session.value.id);
   navigateTo("/calendario");
 }
@@ -724,8 +878,10 @@ function confirmLeave() {
   flush();
   countdown.stop();
   restCountdown.stop();
+  setTimeCountdown.stop();
   stopwatch.stop();
   endSetRest();
+  endSetTime();
   navigateTo(`/dia/${day.value?.id}`);
 }
 </script>

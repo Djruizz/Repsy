@@ -20,14 +20,33 @@
       </div>
     </div>
 
+    <div>
+      <label class="label">Tipo de serie</label>
+      <div class="mt-2 grid grid-cols-2 gap-1.5">
+        <button
+          v-for="opt in scoreOptions" :key="opt.value" type="button"
+          class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition"
+          :class="draft.score_by === opt.value ? 'border-lime/40 bg-lime/10 text-lime' : 'border-white/5 bg-white/5 text-slate-400 hover:text-slate-200'"
+          @click="draft.score_by = opt.value"
+        >
+          <AppIcon :name="opt.icon" class="w-4 h-4" />
+          {{ opt.label }}
+        </button>
+      </div>
+    </div>
+
     <div class="grid grid-cols-2 gap-3">
       <div>
         <label class="label">Series</label>
         <input v-model.number="draft.sets" type="number" min="1" max="20" class="input mt-1.5" />
       </div>
-      <div>
+      <div v-if="draft.score_by === 'reps'">
         <label class="label">Rango de reps</label>
         <input v-model="draft.reps_range" class="input mt-1.5" placeholder="8-12" />
+      </div>
+      <div v-else>
+        <label class="label">Tiempo por serie (seg)</label>
+        <input v-model.number="draft.time" type="number" min="1" class="input mt-1.5" placeholder="45" />
       </div>
     </div>
 
@@ -39,8 +58,8 @@
           <span class="w-8 text-center font-mono text-sm font-bold text-lime">{{ draft.rpe }}</span>
         </div>
       </div>
-      <div>
-        <label class="label">Tiempo (seg)</label>
+      <div v-if="draft.score_by === 'reps'">
+        <label class="label">Tiempo extra (seg)</label>
         <input v-model.number="draft.time" type="number" min="0" class="input mt-1.5" placeholder="0" />
       </div>
     </div>
@@ -67,11 +86,16 @@
 </template>
 
 <script setup lang="ts">
-import { MUSCLE_GROUPS, type Exercise } from '~/types'
+import { MUSCLE_GROUPS, type Exercise, type ScoreBy } from '~/types'
 
 const props = defineProps<{ modelValue: Exercise }>()
 const emit = defineEmits<{ save: [Exercise]; cancel: [] }>()
 
 const draft = reactive({ ...props.modelValue })
 watch(() => props.modelValue, (v) => Object.assign(draft, v))
+
+const scoreOptions: { value: ScoreBy; label: string; icon: string }[] = [
+  { value: 'reps', label: 'Repeticiones', icon: 'dumbbell' },
+  { value: 'time', label: 'Tiempo', icon: 'timer' },
+]
 </script>

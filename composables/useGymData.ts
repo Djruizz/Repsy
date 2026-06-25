@@ -38,7 +38,17 @@ function readFromStorage(): GymData {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<GymData>
       const storedDays = Array.isArray(parsed.days) && parsed.days.length
-        ? parsed.days.map((d) => ({ ...emptyDay(''), ...d }))
+        ? parsed.days.map((d) => ({
+            ...emptyDay(''),
+            ...d,
+            items: Array.isArray(d.items)
+              ? d.items.map((it) =>
+                  it.type === 'exercise'
+                    ? { ...(it as Exercise), score_by: (it as Exercise).score_by ?? 'reps' as const }
+                    : it,
+                )
+              : [],
+          }))
         : []
       const byName = new Map(storedDays.map((d) => [d.dayName, d]))
       const days = REQUIRED_DAYS.map((name) => byName.get(name) ?? emptyDay(name))
@@ -133,6 +143,7 @@ export function useGymData() {
       rpe: 7,
       sets: 3,
       reps_range: '8-12',
+      score_by: 'reps',
       time: 0,
       rest_between_sets: 90,
       ...partial
@@ -225,20 +236,34 @@ export function useGymData() {
     return JSON.stringify(data.value, null, 2)
   }
 
+  function normalizeDay(d: Partial<Day>): Day {
+    return {
+      ...emptyDay(''),
+      ...d,
+      items: Array.isArray(d.items)
+        ? d.items.map((it) =>
+            it.type === 'exercise'
+              ? { ...(it as Exercise), score_by: (it as Exercise).score_by ?? 'reps' as const }
+              : it,
+          )
+        : [],
+    }
+  }
+
   function importData(json: string, mode: 'replace' | 'merge' = 'replace'): boolean {
     try {
       const parsed = JSON.parse(json) as Partial<GymData>
       if (mode === 'replace') {
         data.value = {
           version: DATA_VERSION,
-          days: Array.isArray(parsed.days) ? parsed.days.map((d) => ({ ...emptyDay(''), ...d })) : defaultData().days,
+          days: Array.isArray(parsed.days) ? parsed.days.map(normalizeDay) : defaultData().days,
         sessions: Array.isArray(parsed.sessions)
           ? parsed.sessions.map((s) => ({ ...s, startedAt: s.startedAt ?? s.date, durationMs: s.durationMs ?? 0, setWeights: s.setWeights ?? {} }))
           : []
         }
       } else {
         const incomingDays = Array.isArray(parsed.days) ? parsed.days : []
-        data.value.days = [...data.value.days, ...incomingDays.map((d) => ({ ...emptyDay(''), ...d }))]
+        data.value.days = [...data.value.days, ...incomingDays.map(normalizeDay)]
       }
       return true
     } catch {

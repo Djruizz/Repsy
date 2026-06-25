@@ -44,6 +44,8 @@ export interface BaseItem {
   type: ItemType
 }
 
+export type ScoreBy = 'reps' | 'time'
+
 export interface Exercise extends BaseItem {
   type: 'exercise'
   name: string
@@ -51,6 +53,7 @@ export interface Exercise extends BaseItem {
   rpe: number
   sets: number
   reps_range: string
+  score_by: ScoreBy
   time: number
   rest_between_sets: number
 }

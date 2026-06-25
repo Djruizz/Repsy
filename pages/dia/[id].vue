@@ -16,7 +16,7 @@
           <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Hecho
         </button>
         <button
-          v-if="day.items.length && !isEdit"
+          v-if="day.items.length && !isEdit && !alreadyRunToday"
           class="btn-primary"
           @click="navigateTo(`/correr/${day.id}`)"
         >
@@ -92,6 +92,16 @@
                       {{ item.name }}
                     </h3>
                     <MuscleBadge :group="item.muscle_group" />
+                    <span
+                      class="chip bg-white/5 text-slate-400"
+                      :title="item.score_by === 'time' ? 'Por tiempo' : 'Por repeticiones'"
+                    >
+                      <AppIcon
+                        :name="item.score_by === 'time' ? 'timer' : 'dumbbell'"
+                        class="h-3.5 w-3.5"
+                      />
+                      {{ item.score_by === 'time' ? 'Tiempo' : 'Reps' }}
+                    </span>
                   </div>
                   <div
                     class="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-400"
@@ -100,21 +110,21 @@
                       ><b class="font-mono text-slate-200">{{ item.sets }}</b>
                       series</span
                     >
-                    <span class="inline-flex items-center gap-1.5"
+                    <span v-if="item.score_by === 'reps'" class="inline-flex items-center gap-1.5"
                       ><b class="font-mono text-slate-200">{{
                         item.reps_range
                       }}</b>
                       reps</span
                     >
+                    <span v-else class="inline-flex items-center gap-1.5"
+                      ><b class="font-mono text-slate-200">{{
+                        formatDuration(item.time)
+                      }}</b>
+                      por serie</span
+                    >
                     <span class="inline-flex items-center gap-1.5"
                       >RPE
                       <b class="font-mono text-lime">{{ item.rpe }}</b></span
-                    >
-                    <span
-                      v-if="item.time"
-                      class="inline-flex items-center gap-1.5"
-                      ><AppIcon name="clock" class="h-3.5 w-3.5" />
-                      {{ formatDuration(item.time) }}</span
                     >
                     <span
                       v-if="item.rest_between_sets"
@@ -237,6 +247,16 @@
                       {{ item.name }}
                     </h3>
                     <MuscleBadge :group="item.muscle_group" />
+                    <span
+                      class="chip bg-white/5 text-slate-400"
+                      :title="item.score_by === 'time' ? 'Por tiempo' : 'Por repeticiones'"
+                    >
+                      <AppIcon
+                        :name="item.score_by === 'time' ? 'timer' : 'dumbbell'"
+                        class="h-3.5 w-3.5"
+                      />
+                      {{ item.score_by === 'time' ? 'Tiempo' : 'Reps' }}
+                    </span>
                   </div>
                   <div
                     class="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-400"
@@ -245,21 +265,21 @@
                       ><b class="font-mono text-slate-200">{{ item.sets }}</b>
                       series</span
                     >
-                    <span class="inline-flex items-center gap-1.5"
+                    <span v-if="item.score_by === 'reps'" class="inline-flex items-center gap-1.5"
                       ><b class="font-mono text-slate-200">{{
                         item.reps_range
                       }}</b>
                       reps</span
                     >
+                    <span v-else class="inline-flex items-center gap-1.5"
+                      ><b class="font-mono text-slate-200">{{
+                        formatDuration(item.time)
+                      }}</b>
+                      por serie</span
+                    >
                     <span class="inline-flex items-center gap-1.5"
                       >RPE
                       <b class="font-mono text-lime">{{ item.rpe }}</b></span
-                    >
-                    <span
-                      v-if="item.time"
-                      class="inline-flex items-center gap-1.5"
-                      ><AppIcon name="clock" class="h-3.5 w-3.5" />
-                      {{ formatDuration(item.time) }}</span
                     >
                     <span
                       v-if="item.rest_between_sets"
