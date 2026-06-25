@@ -81,29 +81,20 @@ export default defineNuxtConfig({
       periodicSyncForUpdates: 0,
     },
     devOptions: {
-      enabled: true,
+      enabled: false
     },
     workbox: {
-      navigateFallback: "/",
-      globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
-    },
+      navigateFallback: '/'
+    }
   },
   hooks: {
-    "vite:extendConfig": (
-      config: ViteConfig,
-      { isClient }: { isClient: boolean },
-    ) => {
+    'vite:extendConfig': (config: ViteConfig, { isClient }: { isClient: boolean }) => {
       if (isClient) {
-        const input = config.build?.rollupOptions?.input;
-        if (
-          input &&
-          typeof input === "object" &&
-          !Array.isArray(input) &&
-          !input.server
-        ) {
-          input.server = resolve("server.shim.ts");
+        const input = config.build?.rollupOptions?.input
+        if (input && typeof input === 'object' && !Array.isArray(input) && !input.server) {
+          input.server = resolve('server.shim.ts')
         }
       }
-    },
-  },
+    }
+  }
 });
