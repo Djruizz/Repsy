@@ -80,6 +80,8 @@ export interface RunSession {
   id: string
   dayId: string
   date: string
+  startedAt: string
+  durationMs: number
   completed: boolean
   itemStates: Record<string, ItemRunState>
   setStates: Record<string, SetState>

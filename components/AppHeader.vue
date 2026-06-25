@@ -20,15 +20,55 @@
         </div>
       </NuxtLink>
 
-      <div class="flex items-center gap-1.5">
-        <button class="px-3 py-2 text-xs btn-ghost" @click="showImport = true">
-          <AppIcon name="import" class="w-4 h-4" />
-          <span class="hidden sm:inline">Importar</span>
-        </button>
-        <button class="px-3 py-2 text-xs btn-ghost" @click="doExport">
-          <AppIcon name="export" class="w-4 h-4" />
-          <span class="hidden sm:inline">Exportar</span>
-        </button>
+      <div class="flex items-center gap-2">
+        <NuxtLink
+          v-if="runningSession"
+          :to="`/correr/${runningSession.dayId}`"
+          class="inline-flex items-center gap-1.5 rounded-full bg-sky-400/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300 transition hover:bg-sky-400/25"
+          title="Sesión en curso"
+        >
+          <span class="relative flex h-1.5 w-1.5">
+            <span
+              class="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75"
+            />
+            <span
+              class="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-400"
+            />
+          </span>
+          En curso
+        </NuxtLink>
+
+        <div class="relative" data-menu-root>
+          <button
+            class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-white/5 hover:text-white"
+            :class="menuOpen ? 'bg-white/5 text-white' : ''"
+            @click="menuOpen = !menuOpen"
+          >
+            <AppIcon name="menu" class="w-5 h-5" />
+          </button>
+
+          <Transition name="dropdown">
+            <div
+              v-if="menuOpen"
+              class="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-xl border border-white/10 bg-ink-800 shadow-xl"
+            >
+              <button
+                class="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
+                @click="onImport"
+              >
+                <AppIcon name="import" class="w-4 h-4" />
+                Importar
+              </button>
+              <button
+                class="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
+                @click="onExport"
+              >
+                <AppIcon name="export" class="w-4 h-4" />
+                Exportar
+              </button>
+            </div>
+          </Transition>
+        </div>
       </div>
     </div>
 
@@ -37,10 +77,21 @@
 </template>
 
 <script setup lang="ts">
-const { exportData } = useGymData();
+const { exportData, sessions } = useGymData();
 const showImport = ref(false);
+const menuOpen = ref(false);
 
-function doExport() {
+const runningSession = computed(() =>
+  sessions.value.find((s) => !s.completed),
+);
+
+function onImport() {
+  menuOpen.value = false;
+  showImport.value = true;
+}
+
+function onExport() {
+  menuOpen.value = false;
   const blob = new Blob([exportData()], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -49,4 +100,24 @@ function doExport() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+function closeOnOutside(e: MouseEvent) {
+  const target = e.target as HTMLElement;
+  if (!target.closest('[data-menu-root]')) menuOpen.value = false;
+}
+
+onMounted(() => document.addEventListener("click", closeOnOutside));
+onUnmounted(() => document.removeEventListener("click", closeOnOutside));
 </script>
+
+<style scoped>
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.15s ease;
+}
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+}
+</style>

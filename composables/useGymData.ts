@@ -45,7 +45,13 @@ function readFromStorage(): GymData {
       return {
         version: DATA_VERSION,
         days,
-        sessions: Array.isArray(parsed.sessions) ? parsed.sessions : []
+        sessions: Array.isArray(parsed.sessions)
+          ? parsed.sessions.map((s) => ({
+              ...s,
+              startedAt: s.startedAt ?? s.date,
+              durationMs: s.durationMs ?? 0,
+            }))
+          : []
       }
     }
   } catch {
@@ -158,6 +164,8 @@ export function useGymData() {
       id: uid(),
       dayId,
       date: new Date().toISOString(),
+      startedAt: new Date().toISOString(),
+      durationMs: 0,
       completed: false,
       itemStates: {},
       setStates: {},
@@ -225,7 +233,7 @@ export function useGymData() {
           version: DATA_VERSION,
           days: Array.isArray(parsed.days) ? parsed.days.map((d) => ({ ...emptyDay(''), ...d })) : defaultData().days,
         sessions: Array.isArray(parsed.sessions)
-          ? parsed.sessions.map((s) => ({ ...s, setWeights: s.setWeights ?? {} }))
+          ? parsed.sessions.map((s) => ({ ...s, startedAt: s.startedAt ?? s.date, durationMs: s.durationMs ?? 0, setWeights: s.setWeights ?? {} }))
           : []
         }
       } else {

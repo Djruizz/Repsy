@@ -96,6 +96,10 @@
             <p class="text-sm font-semibold text-white">{{ dayName(selectedInfo.session.dayId) }}</p>
             <p class="text-xs text-slate-500">{{ formatTime(selectedInfo.session.date) }}</p>
           </div>
+          <div v-if="selectedInfo.session.durationMs > 0" class="text-right">
+            <p class="text-xs text-slate-500">Duración</p>
+            <p class="font-mono text-sm font-semibold text-lime">{{ formatDuration(Math.round(selectedInfo.session.durationMs / 1000)) }}</p>
+          </div>
           <NuxtLink :to="`/dia/${selectedInfo.session.dayId}`" class="text-xs text-slate-400 transition hover:text-lime">Ver día</NuxtLink>
         </div>
         <p v-else class="mt-4 text-sm text-slate-400">Sin sesión registrada este día.</p>
@@ -113,6 +117,10 @@
             <p class="text-sm font-semibold text-white">{{ dayName(s.dayId) }}</p>
             <p class="text-xs text-slate-500">{{ formatDate(s.date) }}</p>
           </div>
+          <span v-if="s.durationMs > 0" class="chip bg-white/5 text-slate-300">
+            <AppIcon name="timer" class="h-3.5 w-3.5" />
+            <b class="font-mono text-slate-200">{{ formatDuration(Math.round(s.durationMs / 1000)) }}</b>
+          </span>
           <NuxtLink :to="`/dia/${s.dayId}`" class="text-xs text-slate-400 transition hover:text-lime">Ver día</NuxtLink>
         </div>
       </div>
@@ -130,6 +138,7 @@ import {
   currentStreak, dateKey, isToday,
   monthGrid, startOfMonth, addMonths, MONTH_NAMES, WEEKDAY_HEADERS
 } from '~/composables/useCalendar'
+import { formatDuration } from '~/composables/useTimer'
 import type { MonthCell } from '~/composables/useCalendar'
 import type { RunSession } from '~/types'
 

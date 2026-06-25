@@ -11,6 +11,12 @@
         <p class="text-sm font-bold text-white">
           {{ day.routineName || "Rutina" }}
         </p>
+        <p
+          class="mt-0.5 inline-flex items-center gap-1 font-mono text-xs text-slate-400 tabular-nums"
+        >
+          <AppIcon name="timer" class="h-3.5 w-3.5" />
+          {{ formatTime(stopwatch.seconds.value) }}
+        </p>
       </div>
       <button class="px-3 py-2 text-xs btn-primary" @click="finish">
         <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Finalizar
@@ -409,42 +415,20 @@ import type {
   SetState,
 } from "~/types";
 import {
+  useStopwatch,
   useCountdown,
   formatTime,
   formatDuration,
 } from "~/composables/useTimer";
 
-const TODAY_NAME = [
-  "Lunes",
-  "Martes",
-  "Miércoles",
-  "Jueves",
-  "Viernes",
-  "Sábado",
-  "Domingo",
-][new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
-
 const route = useRoute();
-const { getDay, getActiveSession, startSession, completeSession, sessions } =
+const { getDay, getActiveSession, startSession, completeSession } =
   useGymData();
 
 const day = computed(() => getDay(String(route.params.id)));
 
-const todayKey = new Date().toISOString().slice(0, 10);
-const alreadyRunToday = computed(() =>
-  sessions.value.some(
-    (s) =>
-      s.dayId === day.value?.id &&
-      s.completed &&
-      s.date.slice(0, 10) === todayKey,
-  ),
-);
-
-if (day.value && (day.value.dayName !== TODAY_NAME || alreadyRunToday.value)) {
-  navigateTo(`/dia/${day.value.id}`);
-}
-
 const session = ref<RunSession | null>(null);
+const stopwatch = useStopwatch();
 const countdown = useCountdown();
 const restCountdown = useCountdown();
 
@@ -498,12 +482,19 @@ onMounted(() => {
     session.value =
       getActiveSession(day.value.id) ?? startSession(day.value.id);
   seedCurrentRest();
+  // Start the session-wide stopwatch from the session's startedAt
+  if (session.value?.startedAt) {
+    const elapsed = Date.now() - new Date(session.value.startedAt).getTime();
+    stopwatch.seed(Math.max(0, elapsed));
+    stopwatch.resume();
+  }
 });
 
 onUnmounted(() => {
   flush();
   countdown.stop();
   restCountdown.stop();
+  stopwatch.stop();
 });
 
 const items = computed<RoutineItem[]>(() => day.value?.items ?? []);
@@ -719,6 +710,11 @@ function finish() {
   flush();
   countdown.stop();
   restCountdown.stop();
+  if (session.value.startedAt) {
+    session.value.durationMs =
+      Date.now() - new Date(session.value.startedAt).getTime();
+  }
+  stopwatch.stop();
   endSetRest();
   completeSession(session.value.id);
   navigateTo("/calendario");
@@ -728,6 +724,7 @@ function confirmLeave() {
   flush();
   countdown.stop();
   restCountdown.stop();
+  stopwatch.stop();
   endSetRest();
   navigateTo(`/dia/${day.value?.id}`);
 }

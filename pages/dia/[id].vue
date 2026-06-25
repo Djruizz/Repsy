@@ -16,19 +16,15 @@
           <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Hecho
         </button>
         <button
-          v-if="day.items.length && canRun && !isEdit"
+          v-if="day.items.length && !isEdit"
           class="btn-primary"
           @click="navigateTo(`/correr/${day.id}`)"
         >
-          <AppIcon name="play" class="w-4 h-4" /> Correr
+          <AppIcon name="play" class="w-4 h-4" />
+          {{ activeSession ? "Reanudar" : "Correr" }}
         </button>
         <span
-          v-else-if="
-            day.items.length &&
-            !isEdit &&
-            day.dayName === TODAY_NAME &&
-            alreadyRunToday
-          "
+          v-else-if="day.items.length && !isEdit && alreadyRunToday"
           class="chip bg-lime/15 text-lime"
           title="Ya completaste esta rutina hoy"
         >
@@ -380,16 +376,6 @@
 import { type Exercise, type Rest, type RoutineItem } from "~/types";
 import { formatDuration } from "~/composables/useTimer";
 
-const TODAY_NAME = [
-  "Lunes",
-  "Martes",
-  "Miércoles",
-  "Jueves",
-  "Viernes",
-  "Sábado",
-  "Domingo",
-][new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
-
 const route = useRoute();
 const router = useRouter();
 const {
@@ -401,6 +387,7 @@ const {
   newExercise,
   newRest,
   sessions,
+  getActiveSession,
 } = useGymData();
 
 const day = computed(() => getDay(String(route.params.id)));
@@ -415,8 +402,8 @@ const alreadyRunToday = computed(() =>
       s.date.slice(0, 10) === todayKey,
   ),
 );
-const canRun = computed(
-  () => day.value?.dayName === TODAY_NAME && !alreadyRunToday.value,
+const activeSession = computed(() =>
+  day.value ? getActiveSession(day.value.id) : undefined,
 );
 
 function enterEdit() {
