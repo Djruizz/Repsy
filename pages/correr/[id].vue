@@ -159,19 +159,28 @@
         </div>
 
         <!-- Weight input for the active set -->
-        <div v-if="activeSetIdxNum >= 0 && !setRestActive" class="mt-4 flex items-center gap-3 rounded-xl border border-white/5 bg-ink-900/60 p-3">
+        <div
+          v-if="activeSetIdxNum >= 0 && !setRestActive"
+          class="flex items-center gap-3 p-3 mt-4 border rounded-xl border-white/5 bg-ink-900/60"
+        >
           <div class="flex flex-col">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Serie {{ activeSetIdxNum + 1 }} · peso</span>
-            <div class="mt-1 flex items-baseline gap-1">
+            <span
+              class="text-[10px] font-semibold uppercase tracking-wider text-slate-500"
+              >Serie {{ activeSetIdxNum + 1 }} · peso</span
+            >
+            <div class="flex items-baseline gap-1 mt-1">
               <input
                 :value="currentWeight"
                 type="number"
                 inputmode="decimal"
                 min="0"
                 step="0.5"
-                class="w-20 bg-transparent text-2xl font-bold text-white outline-none placeholder:text-slate-600"
+                class="w-20 text-2xl font-bold text-white bg-transparent outline-none placeholder:text-slate-600"
                 placeholder="0"
-                @input="currentWeight = parseFloat(($event.target as HTMLInputElement).value) || 0"
+                @input="
+                  currentWeight =
+                    parseFloat(($event.target as HTMLInputElement).value) || 0
+                "
                 @keydown.enter="completeSetWithWeight(current, activeSetIdxNum)"
               />
               <span class="text-sm font-medium text-slate-400">kg</span>
@@ -181,18 +190,27 @@
             class="btn-primary ml-auto px-4 py-2.5 text-sm"
             @click="completeSetWithWeight(current, activeSetIdxNum)"
           >
-            <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Completar serie
+            <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Completar
+            serie
           </button>
         </div>
 
         <!-- Show recorded weights for completed sets -->
-        <div v-if="hasRecordedWeights(current)" class="mt-3 flex flex-wrap gap-2 text-xs">
+        <div
+          v-if="hasRecordedWeights(current)"
+          class="flex flex-wrap gap-2 mt-3 text-xs"
+        >
           <span
-            v-for="i in current.sets" :key="i"
+            v-for="i in current.sets"
+            :key="i"
             v-show="getSetWeight(current, i - 1) != null"
             class="chip bg-white/5 text-slate-300"
           >
-            S{{ i }}: <b class="font-mono text-slate-200">{{ getSetWeight(current, i - 1) }}</b> kg
+            S{{ i }}:
+            <b class="font-mono text-slate-200">{{
+              getSetWeight(current, i - 1)
+            }}</b>
+            kg
           </span>
         </div>
 
@@ -252,7 +270,9 @@
             ¡Descanso completado!
           </p>
           <p
-            v-else-if="!restCountdown.running.value && !restCountdown.paused.value"
+            v-else-if="
+              !restCountdown.running.value && !restCountdown.paused.value
+            "
             class="mt-4 text-xs text-slate-500"
           >
             Pulsa iniciar para empezar el temporizador
@@ -261,7 +281,10 @@
 
         <!-- Add time -->
         <div
-          v-if="!restCountdown.finished.value && (restCountdown.running.value || restCountdown.paused.value)"
+          v-if="
+            !restCountdown.finished.value &&
+            (restCountdown.running.value || restCountdown.paused.value)
+          "
           class="grid grid-cols-3 gap-2 mt-5"
         >
           <button class="py-2 text-sm btn-ghost" @click="restCountdown.add(15)">
@@ -277,7 +300,11 @@
 
         <div class="grid grid-cols-2 gap-2 mt-3">
           <button
-            v-if="!restCountdown.running.value && !restCountdown.paused.value && !restCountdown.finished.value"
+            v-if="
+              !restCountdown.running.value &&
+              !restCountdown.paused.value &&
+              !restCountdown.finished.value
+            "
             class="col-span-2 btn-primary"
             @click="beginRest(current)"
           >
@@ -298,7 +325,11 @@
               <AppIcon name="skip" class="w-4 h-4" /> Saltar
             </button>
           </template>
-          <button v-else class="col-span-2 btn-primary" @click="skipRest(current)">
+          <button
+            v-else
+            class="col-span-2 btn-primary"
+            @click="skipRest(current)"
+          >
             <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Continuar
           </button>
         </div>
@@ -431,7 +462,7 @@ function activeSetIdx(item: Exercise): number {
 }
 
 const activeSetIdxNum = computed(() =>
-  current.value?.type === 'exercise' ? firstPendingSetIdx(current.value) : -1
+  current.value?.type === "exercise" ? firstPendingSetIdx(current.value) : -1,
 );
 
 function getSetWeight(item: Exercise, i: number): number | null {
@@ -460,8 +491,6 @@ function completeSetWithWeight(item: Exercise, i: number) {
     startSetRest(item, i);
   }
   if (isExerciseComplete(item)) session.value.itemStates[item.id] = "done";
-  // Pre-fill next set with same weight
-  currentWeight.value = 0;
 }
 
 onMounted(() => {
@@ -585,7 +614,7 @@ watch(
 
 // Pre-fill weight when exercise changes
 watch(current, (c) => {
-  if (c?.type === 'exercise') {
+  if (c?.type === "exercise") {
     const prev = lastWeights.value[c.name] ?? 0;
     currentWeight.value = prev;
   } else {
@@ -630,10 +659,7 @@ function seedCurrentRest() {
   restCountdown.stop();
   if (current.value?.type === "rest") {
     const saved = session.value?.restElapsed[current.value.id] ?? 0;
-    if (
-      saved > 0 &&
-      session.value?.itemStates[current.value.id] !== "done"
-    ) {
+    if (saved > 0 && session.value?.itemStates[current.value.id] !== "done") {
       restCountdown.seed(saved, current.value.duration);
     }
   }
@@ -669,10 +695,7 @@ watch(
     saveRestRemaining(item as Rest);
     const itemId = item.id;
     setTimeout(() => {
-      if (
-        session.value &&
-        session.value.itemStates[itemId] !== "done"
-      ) {
+      if (session.value && session.value.itemStates[itemId] !== "done") {
         session.value.itemStates[itemId] = "done";
       }
     }, 900);
