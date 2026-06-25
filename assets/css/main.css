@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body,
+#__nuxt {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-900 text-slate-200 font-sans antialiased;
+  background-image:
+    radial-gradient(1200px 600px at 80% -10%, rgba(198, 241, 53, 0.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(255, 122, 69, 0.05), transparent 60%);
+  background-attachment: fixed;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(198, 241, 53, 0.25);
+}
+
+@layer components {
+  .surface {
+    @apply bg-ink-850/80 border border-white/5 rounded-2xl shadow-card backdrop-blur-sm;
+  }
+  .surface-raised {
+    @apply bg-ink-800 border border-white/5 rounded-2xl shadow-card;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-lime text-ink-950 hover:bg-lime-400 shadow-glow;
+  }
+  .btn-ghost {
+    @apply btn bg-white/5 text-slate-200 hover:bg-white/10 border border-white/5;
+  }
+  .btn-danger {
+    @apply btn bg-ember/15 text-ember hover:bg-ember/25 border border-ember/20;
+  }
+  .input {
+    @apply w-full bg-ink-800 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-lime/50 focus:ring-2 focus:ring-lime/20;
+  }
+  .label {
+    @apply text-xs font-medium uppercase tracking-wider text-slate-400;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .text-balance { text-wrap: balance; }
+}

@@ -1,0 +1,76 @@
+import { resolve } from 'pathe'
+import type { ViteConfig } from 'nuxt/schema'
+
+export default defineNuxtConfig({
+  compatibilityDate: '2024-11-01',
+  devtools: { enabled: false },
+  modules: ['@nuxtjs/tailwindcss', '@vite-pwa/nuxt'],
+  css: ['~/assets/css/main.css'],
+  ssr: false,
+  experimental: { appManifest: false },
+  app: {
+    head: {
+      title: 'Repsy',
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+        { name: 'theme-color', content: '#0b0f14' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        { name: 'apple-mobile-web-app-title', content: 'Repsy' },
+        { name: 'mobile-web-app-capable', content: 'yes' }
+      ],
+      htmlAttrs: { lang: 'es' },
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap'
+        },
+        { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/icon-192.png' },
+        { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/icon-512.png' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }
+      ]
+    }
+  },
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'Repsy',
+      short_name: 'Repsy',
+      description: 'Control de rutinas de gimnasio',
+      theme_color: '#0b0f14',
+      background_color: '#0b0f14',
+      display: 'standalone',
+      orientation: 'portrait',
+      scope: '/',
+      start_url: '/',
+      icons: [
+        { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+        { src: '/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+      ]
+    },
+    client: {
+      installPrompt: true,
+      periodicSyncForUpdates: 0
+    },
+    devOptions: {
+      enabled: true
+    },
+    workbox: {
+      navigateFallback: '/',
+      globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}']
+    }
+  },
+  hooks: {
+    'vite:extendConfig': (config: ViteConfig, { isClient }: { isClient: boolean }) => {
+      if (isClient) {
+        const input = config.build?.rollupOptions?.input
+        if (input && typeof input === 'object' && !Array.isArray(input) && !input.server) {
+          input.server = resolve('server.shim.ts')
+        }
+      }
+    }
+  }
+})
