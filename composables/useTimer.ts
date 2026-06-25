@@ -146,6 +146,22 @@ export function useCountdown() {
     finished.value = true
   }
 
+  function add(seconds: number) {
+    if (finished.value) return
+    remainingMs.value += seconds * 1000
+    targetMs.value += seconds * 1000
+    if (running.value) endTs += seconds * 1000
+  }
+
+  function seed(remainingSeconds: number, totalSeconds: number) {
+    cancelAnimationFrame(raf)
+    running.value = false
+    paused.value = true
+    finished.value = false
+    targetMs.value = totalSeconds * 1000
+    remainingMs.value = remainingSeconds * 1000
+  }
+
   onUnmounted(() => cancelAnimationFrame(raf))
 
   const seconds = computed(() => Math.ceil(remainingMs.value / 1000))
@@ -155,5 +171,5 @@ export function useCountdown() {
     return Math.min(1, 1 - remainingMs.value / targetMs.value)
   })
 
-  return { remainingMs, seconds, tenths, progress, running, paused, finished, start, pause, resume, stop, skip }
+  return { remainingMs, seconds, tenths, progress, running, paused, finished, start, pause, resume, stop, skip, add, seed }
 }

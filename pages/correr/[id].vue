@@ -210,48 +210,82 @@
           <h2 class="text-xl font-bold text-white">{{ current.label }}</h2>
         </div>
         <p class="mt-1.5 text-sm text-slate-400">
-          Descanso objetivo: {{ formatDuration(current.duration) }}
+          Descanso de {{ formatDuration(current.duration) }}
         </p>
 
-        <div class="flex flex-col items-center mt-5">
-          <div class="relative grid place-items-center">
-            <span
-              v-if="stopwatch.running.value"
-              class="absolute w-32 h-32 border-2 rounded-full border-sky-400/40 animate-pulse-ring"
-            />
-            <div
-              class="grid w-32 h-32 border-2 rounded-full place-items-center border-white/10 bg-ink-900"
+        <div class="flex flex-col items-center mt-6">
+          <div class="relative grid w-32 h-32 place-items-center">
+            <svg
+              class="absolute inset-0 w-32 h-32 -rotate-90"
+              viewBox="0 0 128 128"
             >
-              <span
-                class="font-mono text-3xl font-bold text-white tabular-nums"
-              >
-                {{ formatTime(displaySeconds)
-                }}<span class="text-lg text-slate-500"
-                  >.{{ displayTenths }}</span
-                >
-              </span>
-            </div>
+              <circle
+                cx="64"
+                cy="64"
+                r="58"
+                fill="none"
+                stroke="rgba(255,255,255,0.08)"
+                stroke-width="6"
+              />
+              <circle
+                cx="64"
+                cy="64"
+                r="58"
+                fill="none"
+                stroke="#38bdf8"
+                stroke-width="6"
+                stroke-linecap="round"
+                :stroke-dasharray="364.42"
+                :stroke-dashoffset="364.42 * (1 - restCountdown.progress.value)"
+                style="transition: stroke-dashoffset 0.1s linear"
+              />
+            </svg>
+            <span
+              class="font-mono text-3xl font-bold text-white tabular-nums"
+              >{{ formatTime(restCountdown.seconds.value) }}</span
+            >
           </div>
-          <p class="mt-4 text-xs text-slate-400">
-            Ciclo
-            <b class="font-mono text-sky-300">{{
-              (session?.restCycle[current.id] || 0) + 1
-            }}</b>
-            de <b class="font-mono text-sky-300">{{ restCycles(current) }}</b>
+          <p
+            v-if="restCountdown.finished.value"
+            class="mt-4 text-sm font-semibold text-lime"
+          >
+            ¡Descanso completado!
+          </p>
+          <p
+            v-else-if="!restCountdown.running.value && !restCountdown.paused.value"
+            class="mt-4 text-xs text-slate-500"
+          >
+            Pulsa iniciar para empezar el temporizador
           </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 mt-5">
+        <!-- Add time -->
+        <div
+          v-if="!restCountdown.finished.value && (restCountdown.running.value || restCountdown.paused.value)"
+          class="grid grid-cols-3 gap-2 mt-5"
+        >
+          <button class="py-2 text-sm btn-ghost" @click="restCountdown.add(15)">
+            +15s
+          </button>
+          <button class="py-2 text-sm btn-ghost" @click="restCountdown.add(30)">
+            +30s
+          </button>
+          <button class="py-2 text-sm btn-ghost" @click="restCountdown.add(60)">
+            +60s
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mt-3">
           <button
-            v-if="!stopwatch.running.value && !stopwatch.paused.value"
+            v-if="!restCountdown.running.value && !restCountdown.paused.value && !restCountdown.finished.value"
             class="col-span-2 btn-primary"
-            @click="beginRest()"
+            @click="beginRest(current)"
           >
             <AppIcon name="play" class="w-4 h-4" /> Iniciar descanso
           </button>
-          <template v-else>
+          <template v-else-if="!restCountdown.finished.value">
             <button
-              v-if="stopwatch.running.value"
+              v-if="restCountdown.running.value"
               class="btn-ghost"
               @click="pauseRest(current)"
             >
@@ -260,13 +294,13 @@
             <button v-else class="btn-ghost" @click="resumeRest">
               <AppIcon name="play" class="w-4 h-4" /> Reanudar
             </button>
-            <button class="btn-primary" @click="nextCycle(current)">
-              <AppIcon name="skip" class="w-4 h-4" /> Siguiente
-            </button>
-            <button class="col-span-2 btn-danger" @click="skipRest(current)">
-              <AppIcon name="stop" class="w-4 h-4" /> Saltar descanso
+            <button class="btn-primary" @click="skipRest(current)">
+              <AppIcon name="skip" class="w-4 h-4" /> Saltar
             </button>
           </template>
+          <button v-else class="col-span-2 btn-primary" @click="skipRest(current)">
+            <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Continuar
+          </button>
         </div>
       </div>
     </section>
@@ -344,7 +378,6 @@ import type {
   SetState,
 } from "~/types";
 import {
-  useStopwatch,
   useCountdown,
   formatTime,
   formatDuration,
@@ -381,8 +414,8 @@ if (day.value && (day.value.dayName !== TODAY_NAME || alreadyRunToday.value)) {
 }
 
 const session = ref<RunSession | null>(null);
-const stopwatch = useStopwatch();
 const countdown = useCountdown();
+const restCountdown = useCountdown();
 
 // Inter-set rest state
 const setRestActive = ref(false);
@@ -441,6 +474,7 @@ onMounted(() => {
 onUnmounted(() => {
   flush();
   countdown.stop();
+  restCountdown.stop();
 });
 
 const items = computed<RoutineItem[]>(() => day.value?.items ?? []);
@@ -587,81 +621,69 @@ function itemDotClass(item: RoutineItem) {
   return "bg-white/5 text-slate-400";
 }
 
-function restCycles(item: Rest): number {
-  const idx = items.value.findIndex((i) => i.id === item.id);
-  for (let p = idx - 1; p >= 0; p--) {
-    if (items.value[p].type === "exercise")
-      return (items.value[p] as Exercise).sets;
-  }
-  return 1;
-}
-
-const displaySeconds = computed(() => {
-  if (stopwatch.running.value || stopwatch.paused.value)
-    return stopwatch.seconds.value;
-  return 0;
-});
-const displayTenths = computed(() => {
-  if (stopwatch.running.value || stopwatch.paused.value)
-    return stopwatch.tenths.value;
-  return 0;
-});
-
-function saveElapsed(item: Rest) {
+function saveRestRemaining(item: Rest) {
   if (!session.value) return;
-  session.value.restElapsed[item.id] = Math.floor(
-    stopwatch.elapsedMs.value / 1000,
-  );
+  session.value.restElapsed[item.id] = restCountdown.seconds.value;
 }
 
 function seedCurrentRest() {
-  stopwatch.reset();
+  restCountdown.stop();
   if (current.value?.type === "rest") {
     const saved = session.value?.restElapsed[current.value.id] ?? 0;
-    if (saved > 0) stopwatch.seed(saved * 1000);
+    if (
+      saved > 0 &&
+      session.value?.itemStates[current.value.id] !== "done"
+    ) {
+      restCountdown.seed(saved, current.value.duration);
+    }
   }
 }
 
-function beginRest() {
-  stopwatch.start();
+function beginRest(item: Rest) {
+  restCountdown.start(item.duration);
 }
 
 function pauseRest(item: Rest) {
-  stopwatch.pause();
-  saveElapsed(item);
+  restCountdown.pause();
+  saveRestRemaining(item);
 }
 
 function resumeRest() {
-  stopwatch.resume();
-}
-
-function nextCycle(item: Rest) {
-  if (!session.value) return;
-  stopwatch.stop();
-  saveElapsed(item);
-  const cycles = restCycles(item);
-  const next = (session.value.restCycle[item.id] ?? 0) + 1;
-  if (next >= cycles) {
-    session.value.itemStates[item.id] = "done";
-    session.value.restCycle[item.id] = cycles;
-    stopwatch.reset();
-  } else {
-    session.value.restCycle[item.id] = next;
-    stopwatch.reset();
-    stopwatch.start();
-  }
+  restCountdown.resume();
 }
 
 function skipRest(item: Rest) {
   if (!session.value) return;
-  stopwatch.reset();
+  restCountdown.stop();
   session.value.itemStates[item.id] = "done";
-  session.value.restCycle[item.id] = restCycles(item);
 }
+
+// Auto-complete rest when the countdown finishes
+watch(
+  () => restCountdown.finished.value,
+  (done) => {
+    if (!done) return;
+    const item = current.value;
+    if (item?.type !== "rest") return;
+    if (session.value?.itemStates[item.id] === "done") return;
+    saveRestRemaining(item as Rest);
+    const itemId = item.id;
+    setTimeout(() => {
+      if (
+        session.value &&
+        session.value.itemStates[itemId] !== "done"
+      ) {
+        session.value.itemStates[itemId] = "done";
+      }
+    }, 900);
+  },
+);
 
 function flush() {
   if (!session.value || !current.value || current.value.type !== "rest") return;
-  if (stopwatch.running.value) saveElapsed(current.value as Rest);
+  if (restCountdown.running.value || restCountdown.paused.value) {
+    saveRestRemaining(current.value as Rest);
+  }
 }
 
 watch(currentIdx, () => {
@@ -673,6 +695,7 @@ function finish() {
   if (!session.value) return;
   flush();
   countdown.stop();
+  restCountdown.stop();
   endSetRest();
   completeSession(session.value.id);
   navigateTo("/calendario");
@@ -681,6 +704,7 @@ function finish() {
 function confirmLeave() {
   flush();
   countdown.stop();
+  restCountdown.stop();
   endSetRest();
   navigateTo(`/dia/${day.value?.id}`);
 }
