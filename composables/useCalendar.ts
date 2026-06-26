@@ -185,6 +185,7 @@ export function currentStreak(
 
   if (todayActive && !todayDone) {
     // Don't count today, start checking from yesterday
+    cursor = addDays(cursor, -1)
   } else if (todayDone) {
     streak++;
     cursor = addDays(cursor, -1);
