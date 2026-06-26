@@ -80,8 +80,10 @@ const chartData = computed<ChartPoint[]>(() => {
     const existing = byDate.get(key)
     if (existing == null || h.weight > existing) byDate.set(key, h.weight)
   }
+  const entries = Array.from(byDate.entries())
+  entries.sort((a, b) => a[0].localeCompare(b[0]))
   const points: ChartPoint[] = []
-  for (const [date, weight] of byDate) {
+  for (const [date, weight] of entries) {
     const d = new Date(date)
     points.push({
       weight,

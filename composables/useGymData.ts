@@ -60,6 +60,9 @@ function readFromStorage(): GymData {
               ...s,
               startedAt: s.startedAt ?? s.date,
               durationMs: s.durationMs ?? 0,
+              setWeights: s.setWeights ?? {},
+              restCycle: s.restCycle ?? {},
+              restElapsed: s.restElapsed ?? {},
             }))
           : []
       }
@@ -106,10 +109,11 @@ export function useGymData() {
     if (d) Object.assign(d, patch)
   }
 
-  function addItem(dayId: string, item: Omit<RoutineItem, 'id'>) {
+  function addItem(dayId: string, item: RoutineItem) {
     const d = getDay(dayId)
     if (!d) return
-    d.items.push({ id: uid(), ...item } as RoutineItem)
+    if (!item.id) (item as any).id = uid()
+    d.items.push(item)
   }
 
   function updateItem(dayId: string, itemId: string, patch: Partial<RoutineItem>) {
@@ -162,10 +166,6 @@ export function useGymData() {
 
   function getActiveSession(dayId: string): RunSession | undefined {
     return data.value.sessions.find((s) => s.dayId === dayId && !s.completed)
-  }
-
-  function getSessionForDate(date: string): RunSession | undefined {
-    return data.value.sessions.find((s) => s.date.startsWith(date) && s.completed)
   }
 
   function startSession(dayId: string): RunSession {
@@ -258,12 +258,40 @@ export function useGymData() {
           version: DATA_VERSION,
           days: Array.isArray(parsed.days) ? parsed.days.map(normalizeDay) : defaultData().days,
         sessions: Array.isArray(parsed.sessions)
-          ? parsed.sessions.map((s) => ({ ...s, startedAt: s.startedAt ?? s.date, durationMs: s.durationMs ?? 0, setWeights: s.setWeights ?? {} }))
+          ? parsed.sessions.map((s) => ({
+              ...s,
+              startedAt: s.startedAt ?? s.date,
+              durationMs: s.durationMs ?? 0,
+              setWeights: s.setWeights ?? {},
+              restCycle: s.restCycle ?? {},
+              restElapsed: s.restElapsed ?? {},
+            }))
           : []
         }
       } else {
-        const incomingDays = Array.isArray(parsed.days) ? parsed.days : []
-        data.value.days = [...data.value.days, ...incomingDays.map(normalizeDay)]
+        const incomingDays = Array.isArray(parsed.days) ? parsed.days.map(normalizeDay) : []
+        const existingByName = new Map(data.value.days.map((d) => [d.dayName, d]))
+        for (const incoming of incomingDays) {
+          existingByName.set(incoming.dayName, incoming)
+        }
+        data.value.days = REQUIRED_DAYS.map((name) => existingByName.get(name) ?? emptyDay(name))
+
+        const incomingSessions = Array.isArray(parsed.sessions)
+          ? parsed.sessions.map((s) => ({
+              ...s,
+              startedAt: s.startedAt ?? s.date,
+              durationMs: s.durationMs ?? 0,
+              setWeights: s.setWeights ?? {},
+              restCycle: s.restCycle ?? {},
+              restElapsed: s.restElapsed ?? {},
+            }))
+          : []
+        const existingIds = new Set(data.value.sessions.map((s) => s.id))
+        for (const s of incomingSessions) {
+          if (!existingIds.has(s.id)) {
+            data.value.sessions.push(s)
+          }
+        }
       }
       return true
     } catch {
@@ -288,7 +316,6 @@ export function useGymData() {
     newExercise,
     newRest,
     getActiveSession,
-    getSessionForDate,
     startSession,
     updateSession,
     completeSession,

@@ -77,13 +77,13 @@ const {
 const day = computed(() => getDay(String(route.params.id)));
 const isEdit = computed(() => route.query.edit !== undefined);
 
-const todayKey = todayLocalKey();
+const todayKey = computed(() => todayLocalKey());
 const alreadyRunToday = computed(() =>
   sessions.value.some(
     (s) =>
       s.dayId === day.value?.id &&
       s.completed &&
-      localDayKey(s.date) === todayKey,
+      localDayKey(s.date) === todayKey.value,
   ),
 );
 const activeSession = computed(() =>
@@ -124,13 +124,24 @@ function openEditItem(item: RoutineItem) {
 }
 
 function saveExercise(ex: Exercise) {
-  if (modal.value?.mode === "add") addItem(day.value!.id, ex);
-  else updateItem(day.value!.id, ex.id, ex);
+  const clamped: Exercise = {
+    ...ex,
+    sets: Math.max(1, Math.round(ex.sets || 1)),
+    rpe: Math.max(1, Math.min(10, Math.round(ex.rpe || 7))),
+    time: Math.max(0, Math.round(ex.time || 0)),
+    rest_between_sets: Math.max(0, Math.round(ex.rest_between_sets || 0)),
+  }
+  if (modal.value?.mode === "add") addItem(day.value!.id, clamped);
+  else updateItem(day.value!.id, clamped.id, clamped);
   modal.value = null;
 }
 function saveRest(r: Rest) {
-  if (modal.value?.mode === "add") addItem(day.value!.id, r);
-  else updateItem(day.value!.id, r.id, r);
+  const clamped: Rest = {
+    ...r,
+    duration: Math.max(1, Math.round(r.duration || 90)),
+  }
+  if (modal.value?.mode === "add") addItem(day.value!.id, clamped);
+  else updateItem(day.value!.id, clamped.id, clamped);
   modal.value = null;
 }
 function removeItem(id: string) {

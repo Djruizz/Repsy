@@ -80,7 +80,7 @@
 
     <div class="flex justify-end gap-2 pt-1">
       <button type="button" class="btn-ghost" @click="$emit('cancel')">Cancelar</button>
-      <button type="submit" class="btn-primary" :disabled="!draft.name.trim()">Guardar</button>
+      <button type="submit" class="btn-primary" :disabled="!draft.name.trim() || draft.sets < 1 || draft.time < 0 || draft.rest_between_sets < 0">Guardar</button>
     </div>
   </form>
 </template>

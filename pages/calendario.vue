@@ -49,8 +49,9 @@ const activeDayNames = computed(() =>
 const streak = computed(() => currentStreak(completed.value, activeDayNames.value))
 const total = computed(() => completed.value.length)
 const thisMonth = computed(() => {
-  const m = new Date().getMonth()
-  return completed.value.filter((s) => new Date(s.date).getMonth() === m).length
+  const now = new Date()
+  const prefix = dateKey(now).slice(0, 7)
+  return completed.value.filter((s) => localDayKey(s.date).startsWith(prefix)).length
 })
 
 const monthOffset = ref(0)

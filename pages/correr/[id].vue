@@ -113,13 +113,13 @@ const todayDayName = computed(() => weekdayName(new Date()));
 const isTodayDay = computed(
   () => day.value?.dayName === todayDayName.value,
 );
-const todayKey = todayLocalKey();
+const todayKey = computed(() => todayLocalKey());
 const alreadyRunToday = computed(() =>
   sessions.value.some(
     (s) =>
       s.dayId === day.value?.id &&
       s.completed &&
-      localDayKey(s.date) === todayKey,
+      localDayKey(s.date) === todayKey.value,
   ),
 );
 const activeSession = computed(() =>
