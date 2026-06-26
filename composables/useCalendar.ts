@@ -20,6 +20,15 @@ export function dateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+export function localDayKey(value: string | Date): string {
+  const d = typeof value === "string" ? new Date(value) : value;
+  return dateKey(d);
+}
+
+export function todayKey(): string {
+  return dateKey(new Date());
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
   return dateKey(a) === dateKey(b);
 }
@@ -116,7 +125,7 @@ export function streakGrid(
   weeks = 12,
 ): StreakDay[][] {
   const completedSet = new Set(
-    sessions.filter((s) => s.completed).map((s) => s.date.slice(0, 10)),
+    sessions.filter((s) => s.completed).map((s) => localDayKey(s.date)),
   );
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -160,7 +169,7 @@ export function currentStreak(
   activeDayNames: string[],
 ): number {
   const completedSet = new Set(
-    sessions.filter((s) => s.completed).map((s) => s.date.slice(0, 10)),
+    sessions.filter((s) => s.completed).map((s) => localDayKey(s.date)),
   );
   const activeSet = new Set(activeDayNames);
 

@@ -30,7 +30,7 @@ export { requestIdleCallback, cancelIdleCallback } from '#app/compat/idle-callba
 export { setInterval } from '#app/compat/interval';
 export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composables';
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
-export { startOfWeek, addDays, dateKey, isSameDay, isToday, weekDays, shortWeekday, monthLabel, startOfMonth, addMonths, isSameMonth, monthGrid, MONTH_NAMES, WEEKDAY_HEADERS, streakGrid, weekdayName, currentStreak, MonthCell, StreakDay } from '../composables/useCalendar';
+export { startOfWeek, addDays, dateKey, localDayKey, todayKey, isSameDay, isToday, weekDays, shortWeekday, monthLabel, startOfMonth, addMonths, isSameMonth, monthGrid, MONTH_NAMES, WEEKDAY_HEADERS, streakGrid, weekdayName, currentStreak, MonthCell, StreakDay } from '../composables/useCalendar';
 export { useGymData } from '../composables/useGymData';
 export { useStopwatch, formatTime, formatDuration, useCountdown } from '../composables/useTimer';
 export { usePWA, useTransparentPwaIcon, useMaskablePwaIcon, useFaviconPwaIcon, useApplePwaIcon, useAppleSplashScreenPwaIcon } from '../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index';

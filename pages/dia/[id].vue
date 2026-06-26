@@ -16,7 +16,7 @@
           <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Hecho
         </button>
         <button
-          v-if="day.items.length && !isEdit && !alreadyRunToday"
+          v-if="day.items.length && !isEdit && !alreadyRunToday && isTodayDay"
           class="btn-primary"
           @click="navigateTo(`/correr/${day.id}`)"
         >
@@ -31,6 +31,14 @@
           <AppIcon name="check" class="h-3.5 w-3.5" :stroke-width="3" />
           Completada hoy
         </span>
+        <!-- <span
+          v-else-if="day.items.length && !isEdit && !isTodayDay"
+          class="chip bg-white/5 text-slate-500"
+          title="Solo puedes correr la rutina del día de hoy"
+        >
+          <AppIcon name="calendar" class="h-3.5 w-3.5" />
+          no disponible
+        </span> -->
       </div>
     </div>
 
@@ -94,13 +102,17 @@
                     <MuscleBadge :group="item.muscle_group" />
                     <span
                       class="chip bg-white/5 text-slate-400"
-                      :title="item.score_by === 'time' ? 'Por tiempo' : 'Por repeticiones'"
+                      :title="
+                        item.score_by === 'time'
+                          ? 'Por tiempo'
+                          : 'Por repeticiones'
+                      "
                     >
                       <AppIcon
                         :name="item.score_by === 'time' ? 'timer' : 'dumbbell'"
                         class="h-3.5 w-3.5"
                       />
-                      {{ item.score_by === 'time' ? 'Tiempo' : 'Reps' }}
+                      {{ item.score_by === "time" ? "Tiempo" : "Reps" }}
                     </span>
                   </div>
                   <div
@@ -110,7 +122,9 @@
                       ><b class="font-mono text-slate-200">{{ item.sets }}</b>
                       series</span
                     >
-                    <span v-if="item.score_by === 'reps'" class="inline-flex items-center gap-1.5"
+                    <span
+                      v-if="item.score_by === 'reps'"
+                      class="inline-flex items-center gap-1.5"
                       ><b class="font-mono text-slate-200">{{
                         item.reps_range
                       }}</b>
@@ -249,13 +263,17 @@
                     <MuscleBadge :group="item.muscle_group" />
                     <span
                       class="chip bg-white/5 text-slate-400"
-                      :title="item.score_by === 'time' ? 'Por tiempo' : 'Por repeticiones'"
+                      :title="
+                        item.score_by === 'time'
+                          ? 'Por tiempo'
+                          : 'Por repeticiones'
+                      "
                     >
                       <AppIcon
                         :name="item.score_by === 'time' ? 'timer' : 'dumbbell'"
                         class="h-3.5 w-3.5"
                       />
-                      {{ item.score_by === 'time' ? 'Tiempo' : 'Reps' }}
+                      {{ item.score_by === "time" ? "Tiempo" : "Reps" }}
                     </span>
                   </div>
                   <div
@@ -265,7 +283,9 @@
                       ><b class="font-mono text-slate-200">{{ item.sets }}</b>
                       series</span
                     >
-                    <span v-if="item.score_by === 'reps'" class="inline-flex items-center gap-1.5"
+                    <span
+                      v-if="item.score_by === 'reps'"
+                      class="inline-flex items-center gap-1.5"
                       ><b class="font-mono text-slate-200">{{
                         item.reps_range
                       }}</b>
@@ -395,6 +415,11 @@
 <script setup lang="ts">
 import { type Exercise, type Rest, type RoutineItem } from "~/types";
 import { formatDuration } from "~/composables/useTimer";
+import {
+  weekdayName,
+  localDayKey,
+  todayKey as todayLocalKey,
+} from "~/composables/useCalendar";
 
 const route = useRoute();
 const router = useRouter();
@@ -413,17 +438,20 @@ const {
 const day = computed(() => getDay(String(route.params.id)));
 const isEdit = computed(() => route.query.edit !== undefined);
 
-const todayKey = new Date().toISOString().slice(0, 10);
+const todayKey = todayLocalKey();
 const alreadyRunToday = computed(() =>
   sessions.value.some(
     (s) =>
       s.dayId === day.value?.id &&
       s.completed &&
-      s.date.slice(0, 10) === todayKey,
+      localDayKey(s.date) === todayKey,
   ),
 );
 const activeSession = computed(() =>
   day.value ? getActiveSession(day.value.id) : undefined,
+);
+const isTodayDay = computed(
+  () => day.value?.dayName === weekdayName(new Date()),
 );
 
 function enterEdit() {

@@ -96,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { localDayKey } from '~/composables/useCalendar'
 const { getAllExerciseNames, getWeightHistory } = useGymData()
 
 const exerciseNames = computed(() => getAllExerciseNames())
@@ -124,7 +125,7 @@ interface ChartPoint { weight: number; label: string }
 const chartData = computed<ChartPoint[]>(() => {
   const byDate = new Map<string, number>()
   for (const h of history.value) {
-    const key = h.date.slice(0, 10)
+    const key = localDayKey(h.date)
     const existing = byDate.get(key)
     if (existing == null || h.weight > existing) byDate.set(key, h.weight)
   }
@@ -148,7 +149,7 @@ interface GroupedEntry { date: string; sets: { setIdx: number; weight: number }[
 const groupedHistory = computed<GroupedEntry[]>(() => {
   const byDate = new Map<string, { setIdx: number; weight: number }[]>()
   for (const h of history.value) {
-    const key = h.date.slice(0, 10)
+    const key = localDayKey(h.date)
     if (!byDate.has(key)) byDate.set(key, [])
     byDate.get(key)!.push({ setIdx: h.setIdx, weight: h.weight })
   }

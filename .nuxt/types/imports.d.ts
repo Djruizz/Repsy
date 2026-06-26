@@ -54,6 +54,7 @@ declare global {
   const isVue2: typeof import('../../node_modules/nuxt/dist/app/compat/vue-demi').isVue2
   const isVue3: typeof import('../../node_modules/nuxt/dist/app/compat/vue-demi').isVue3
   const loadPayload: typeof import('../../node_modules/nuxt/dist/app/composables/payload').loadPayload
+  const localDayKey: typeof import('../../composables/useCalendar').localDayKey
   const markRaw: typeof import('vue').markRaw
   const monthGrid: typeof import('../../composables/useCalendar').monthGrid
   const monthLabel: typeof import('../../composables/useCalendar').monthLabel
@@ -107,6 +108,7 @@ declare global {
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
   const toValue: typeof import('vue').toValue
+  const todayKey: typeof import('../../composables/useCalendar').todayKey
   const triggerRef: typeof import('vue').triggerRef
   const tryUseNuxtApp: typeof import('../../node_modules/nuxt/dist/app/nuxt').tryUseNuxtApp
   const unref: typeof import('vue').unref
@@ -282,6 +284,7 @@ declare module 'vue' {
     readonly isVue2: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/compat/vue-demi')['isVue2']>
     readonly isVue3: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/compat/vue-demi')['isVue3']>
     readonly loadPayload: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/payload')['loadPayload']>
+    readonly localDayKey: UnwrapRef<typeof import('../../composables/useCalendar')['localDayKey']>
     readonly markRaw: UnwrapRef<typeof import('vue')['markRaw']>
     readonly monthGrid: UnwrapRef<typeof import('../../composables/useCalendar')['monthGrid']>
     readonly monthLabel: UnwrapRef<typeof import('../../composables/useCalendar')['monthLabel']>
@@ -335,6 +338,7 @@ declare module 'vue' {
     readonly toRef: UnwrapRef<typeof import('vue')['toRef']>
     readonly toRefs: UnwrapRef<typeof import('vue')['toRefs']>
     readonly toValue: UnwrapRef<typeof import('vue')['toValue']>
+    readonly todayKey: UnwrapRef<typeof import('../../composables/useCalendar')['todayKey']>
     readonly triggerRef: UnwrapRef<typeof import('vue')['triggerRef']>
     readonly tryUseNuxtApp: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/nuxt')['tryUseNuxtApp']>
     readonly unref: UnwrapRef<typeof import('vue')['unref']>

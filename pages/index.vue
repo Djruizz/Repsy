@@ -302,6 +302,7 @@ import {
   monthLabel,
   isToday,
   dateKey,
+  localDayKey,
 } from "~/composables/useCalendar";
 import { formatDuration } from "~/composables/useTimer";
 import type { Day } from "~/types";
@@ -334,7 +335,7 @@ const week = computed<WeekCell[]>(() => {
       date,
       today: isToday(date),
       completed: sessions.value.some(
-        (s) => s.completed && s.date.slice(0, 10) === key,
+        (s) => s.completed && localDayKey(s.date) === key,
       ),
       day: days.value.find((x) => x.dayName === weekdayName(date)),
     };

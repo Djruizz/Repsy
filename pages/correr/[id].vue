@@ -1,5 +1,5 @@
 <template>
-  <div v-if="day" class="space-y-5">
+  <div v-if="day && isTodayDay && canRun" class="space-y-5">
     <div class="flex items-center justify-between">
       <button class="px-3 py-2 text-xs btn-ghost" @click="confirmLeave">
         <AppIcon name="arrow-left" class="w-4 h-4" /> Salir
@@ -501,6 +501,34 @@
     </section>
   </div>
 
+  <div v-else-if="day && isTodayDay && alreadyRunToday && !activeSession" class="grid py-24 text-center place-items-center">
+    <div class="flex flex-col items-center gap-3">
+      <AppIcon name="check" class="w-10 h-10 text-lime" :stroke-width="3" />
+      <h2 class="text-lg font-bold text-white">Rutina completada</h2>
+      <p class="max-w-xs text-sm text-slate-400">
+        Ya finalizaron esta rutina hoy. No puedes volver a correrla hasta
+        mañana.
+      </p>
+      <button class="mt-1 btn-primary" @click="navigateTo(`/dia/${day.id}`)">
+        <AppIcon name="arrow-left" class="w-4 h-4" /> Volver al día
+      </button>
+    </div>
+  </div>
+
+  <div v-else-if="day && !isTodayDay" class="grid py-24 text-center place-items-center">
+    <div class="flex flex-col items-center gap-3">
+      <AppIcon name="calendar" class="w-10 h-10 text-slate-500" />
+      <h2 class="text-lg font-bold text-white">No es el día de hoy</h2>
+      <p class="max-w-xs text-sm text-slate-400">
+        Solo puedes correr la rutina del día de hoy ({{ todayDayName }}).
+        Esta rutina corresponde a <b class="text-slate-200">{{ day.dayName }}</b>.
+      </p>
+      <button class="mt-1 btn-primary" @click="navigateTo(`/dia/${day.id}`)">
+        <AppIcon name="arrow-left" class="w-4 h-4" /> Ver día
+      </button>
+    </div>
+  </div>
+
   <div v-else class="grid py-24 text-center place-items-center">
     <p class="text-sm text-slate-400">No se encontró este día.</p>
   </div>
@@ -520,12 +548,30 @@ import {
   formatTime,
   formatDuration,
 } from "~/composables/useTimer";
+import { weekdayName, localDayKey, todayKey as todayLocalKey } from "~/composables/useCalendar";
 
 const route = useRoute();
-const { getDay, getActiveSession, startSession, completeSession } =
+const { getDay, getActiveSession, startSession, completeSession, sessions } =
   useGymData();
 
 const day = computed(() => getDay(String(route.params.id)));
+const todayDayName = computed(() => weekdayName(new Date()));
+const isTodayDay = computed(
+  () => day.value?.dayName === todayDayName.value,
+);
+const todayKey = todayLocalKey();
+const alreadyRunToday = computed(() =>
+  sessions.value.some(
+    (s) =>
+      s.dayId === day.value?.id &&
+      s.completed &&
+      localDayKey(s.date) === todayKey,
+  ),
+);
+const activeSession = computed(() =>
+  day.value ? getActiveSession(day.value.id) : undefined,
+);
+const canRun = computed(() => !alreadyRunToday.value || !!activeSession.value);
 
 const session = ref<RunSession | null>(null);
 const stopwatch = useStopwatch();
@@ -584,6 +630,7 @@ function completeSetWithWeight(item: Exercise, i: number) {
 }
 
 onMounted(() => {
+  if (!isTodayDay.value || !canRun.value) return;
   if (day.value)
     session.value =
       getActiveSession(day.value.id) ?? startSession(day.value.id);

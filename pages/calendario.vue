@@ -135,7 +135,7 @@
 
 <script setup lang="ts">
 import {
-  currentStreak, dateKey, isToday,
+  currentStreak, dateKey, isToday, localDayKey,
   monthGrid, startOfMonth, addMonths, MONTH_NAMES, WEEKDAY_HEADERS
 } from '~/composables/useCalendar'
 import { formatDuration } from '~/composables/useTimer'
@@ -169,7 +169,7 @@ const monthTitle = computed(() => {
 const completedMap = computed(() => {
   const map = new Map<string, RunSession>()
   for (const s of completed.value) {
-    map.set(s.date.slice(0, 10), s)
+    map.set(localDayKey(s.date), s)
   }
   return map
 })
