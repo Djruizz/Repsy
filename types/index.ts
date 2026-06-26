@@ -100,3 +100,11 @@ export interface GymData {
 }
 
 export const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+
+export interface WeekCell {
+  key: string
+  date: Date
+  today: boolean
+  completed: boolean
+  day?: Day
+}
