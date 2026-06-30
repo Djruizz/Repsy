@@ -1,5 +1,5 @@
 import { ref, watch, computed } from 'vue'
-import type { Day, RoutineItem, Exercise, Rest, GymData, RunSession } from '~/types'
+import type { Day, RoutineItem, Exercise, Rest, GymData, RunSession, MuscleGroup } from '~/types'
 
 const STORAGE_KEY = 'gymapp:data'
 const DATA_VERSION = 1
@@ -232,6 +232,19 @@ export function useGymData() {
     return [...names].sort()
   }
 
+  function getAllExercises(): { name: string; muscle_group: MuscleGroup }[] {
+    const byName = new Map<string, { name: string; muscle_group: MuscleGroup }>()
+    for (const d of data.value.days) {
+      for (const item of d.items) {
+        if (item.type !== 'exercise') continue
+        const name = item.name.trim()
+        if (!name) continue
+        if (!byName.has(name)) byName.set(name, { name, muscle_group: item.muscle_group })
+      }
+    }
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
+  }
+
   function exportData(): string {
     return JSON.stringify(data.value, null, 2)
   }
@@ -322,6 +335,7 @@ export function useGymData() {
     deleteSession,
     getWeightHistory,
     getAllExerciseNames,
+    getAllExercises,
     exportData,
     importData,
     resetAll
