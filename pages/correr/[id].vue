@@ -92,17 +92,13 @@
 </template>
 
 <script setup lang="ts">
-import type {
-  Exercise,
-  Rest,
-  RoutineItem,
-  RunSession,
-} from "~/types";
+import type { Exercise, Rest, RoutineItem, RunSession } from "~/types";
+import { useStopwatch, useCountdown } from "~/composables/useTimer";
 import {
-  useStopwatch,
-  useCountdown,
-} from "~/composables/useTimer";
-import { weekdayName, localDayKey, todayKey as todayLocalKey } from "~/composables/useCalendar";
+  weekdayName,
+  localDayKey,
+  todayKey as todayLocalKey,
+} from "~/composables/useCalendar";
 
 const route = useRoute();
 const { getDay, getActiveSession, startSession, completeSession, sessions } =
@@ -110,9 +106,7 @@ const { getDay, getActiveSession, startSession, completeSession, sessions } =
 
 const day = computed(() => getDay(String(route.params.id)));
 const todayDayName = computed(() => weekdayName(new Date()));
-const isTodayDay = computed(
-  () => day.value?.dayName === todayDayName.value,
-);
+const isTodayDay = computed(() => day.value?.dayName === todayDayName.value);
 const todayKey = computed(() => todayLocalKey());
 const alreadyRunToday = computed(() =>
   sessions.value.some(
@@ -242,16 +236,16 @@ function startSetRest(setIdx: number) {
 }
 
 // Auto-advance when countdown finishes
-watch(
-  () => countdown.finished.value,
-  (done) => {
-    if (done && setRestActive.value) {
-      setTimeout(() => {
-        if (setRestActive.value) endSetRest();
-      }, 600);
-    }
-  },
-);
+// watch(
+//   () => countdown.finished.value,
+//   (done) => {
+//     if (done && setRestActive.value) {
+//       setTimeout(() => {
+//         if (setRestActive.value) endSetRest();
+//       }, 600);
+//     }
+//   },
+// );
 
 // Pre-fill weight when exercise changes
 watch(current, (c) => {
