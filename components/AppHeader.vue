@@ -29,7 +29,7 @@
         >
           <span class="relative flex h-1.5 w-1.5">
             <span
-              class="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75"
+              class="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-sky-400"
             />
             <span
               class="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-400"
@@ -40,7 +40,7 @@
 
         <div class="relative" data-menu-root>
           <button
-            class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-white/5 hover:text-white"
+            class="grid transition rounded-lg h-9 w-9 place-items-center text-slate-400 hover:bg-white/5 hover:text-white"
             :class="menuOpen ? 'bg-white/5 text-white' : ''"
             @click="menuOpen = !menuOpen"
           >
@@ -50,21 +50,31 @@
           <Transition name="dropdown">
             <div
               v-if="menuOpen"
-              class="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-xl border border-white/10 bg-ink-800 shadow-xl"
+              class="absolute right-0 z-50 overflow-hidden border shadow-xl top-11 w-52 rounded-xl border-white/10 bg-ink-800"
             >
               <button
-                class="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
+                class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
                 @click="onImport"
               >
                 <AppIcon name="import" class="w-4 h-4" />
                 Importar
               </button>
               <button
-                class="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
+                class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
                 @click="onExport"
               >
                 <AppIcon name="export" class="w-4 h-4" />
                 Exportar
+              </button>
+              <button
+                class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
+                @click="onToggleMute"
+              >
+                <AppIcon
+                  :name="muted ? 'volume-off' : 'volume-on'"
+                  class="w-4 h-4"
+                />
+                {{ muted ? "Activar sonido" : "Silenciar" }}
               </button>
             </div>
           </Transition>
@@ -77,13 +87,14 @@
 </template>
 
 <script setup lang="ts">
+import { useSoundCue } from "~/composables/useSoundCue";
+
 const { exportData, sessions } = useGymData();
+const { muted, toggleMuted } = useSoundCue();
 const showImport = ref(false);
 const menuOpen = ref(false);
 
-const runningSession = computed(() =>
-  sessions.value.find((s) => !s.completed),
-);
+const runningSession = computed(() => sessions.value.find((s) => !s.completed));
 
 function onImport() {
   menuOpen.value = false;
@@ -101,9 +112,13 @@ function onExport() {
   URL.revokeObjectURL(url);
 }
 
+function onToggleMute() {
+  toggleMuted();
+}
+
 function closeOnOutside(e: MouseEvent) {
   const target = e.target as HTMLElement;
-  if (!target.closest('[data-menu-root]')) menuOpen.value = false;
+  if (!target.closest("[data-menu-root]")) menuOpen.value = false;
 }
 
 onMounted(() => document.addEventListener("click", closeOnOutside));

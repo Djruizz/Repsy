@@ -45,6 +45,8 @@ const paths: Record<string, string> = {
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   reset: '<path d="M4 5v5h5"/><path d="M4.5 10A8 8 0 1 1 5 16.5"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
-  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  'volume-on': '<path d="M4 10v4h3l4 3V7L7 10H4z" fill="currentColor" stroke="none"/><path d="M15 9.5a3.5 3.5 0 0 1 0 5"/><path d="M17.5 7a6 6 0 0 1 0 10"/>',
+  'volume-off': '<path d="M4 10v4h3l4 3V7L7 10H4z" fill="currentColor" stroke="none"/><path d="M16 9l5 5M21 9l-5 5"/>'
 }
 </script>

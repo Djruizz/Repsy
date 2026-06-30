@@ -94,6 +94,7 @@
 <script setup lang="ts">
 import type { Exercise, Rest, RoutineItem, RunSession } from "~/types";
 import { useStopwatch, useCountdown } from "~/composables/useTimer";
+import { useSoundCue } from "~/composables/useSoundCue";
 import {
   weekdayName,
   localDayKey,
@@ -126,6 +127,7 @@ const stopwatch = useStopwatch();
 const countdown = useCountdown();
 const restCountdown = useCountdown();
 const setTimeCountdown = useCountdown();
+const { playFinishCue } = useSoundCue();
 
 // Inter-set rest state
 const setRestActive = ref(false);
@@ -247,6 +249,15 @@ function startSetRest(setIdx: number) {
 //   },
 // );
 
+// Cue sound when the inter-set rest countdown reaches zero (so the user
+// hears the "go" cue even before pressing Terminar).
+watch(
+  () => countdown.finished.value,
+  (done) => {
+    if (done && setRestActive.value) playFinishCue();
+  },
+);
+
 // Pre-fill weight when exercise changes
 watch(current, (c) => {
   endSetTime();
@@ -321,6 +332,7 @@ watch(
   () => setTimeCountdown.finished.value,
   (done) => {
     if (!done || !setTimeActive.value) return;
+    playFinishCue();
     const idx = setTimeSetIdx.value;
     if (idx >= 0) completeTimeSet(idx);
   },
@@ -388,6 +400,7 @@ watch(
     const item = current.value;
     if (item?.type !== "rest") return;
     if (session.value?.itemStates[item.id] === "done") return;
+    playFinishCue();
     saveRestRemaining(item as Rest);
     const itemId = item.id;
     setTimeout(() => {
@@ -424,6 +437,7 @@ function finish() {
   stopwatch.stop();
   endSetRest();
   endSetTime();
+  playFinishCue();
   completeSession(session.value.id);
   navigateTo("/calendario");
 }

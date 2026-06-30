@@ -78,6 +78,8 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
+  const playBeep: typeof import('../../composables/useSoundCue').playBeep
+  const playFinishCue: typeof import('../../composables/useSoundCue').playFinishCue
   const prefetchComponents: typeof import('../../node_modules/nuxt/dist/app/composables/preload').prefetchComponents
   const preloadComponents: typeof import('../../node_modules/nuxt/dist/app/composables/preload').preloadComponents
   const preloadPayload: typeof import('../../node_modules/nuxt/dist/app/composables/payload').preloadPayload
@@ -200,6 +202,7 @@ declare global {
   const useServerSeoMeta: typeof import('../../node_modules/nuxt/dist/app/composables/head').useServerSeoMeta
   const useShadowRoot: typeof import('vue').useShadowRoot
   const useSlots: typeof import('vue').useSlots
+  const useSoundCue: typeof import('../../composables/useSoundCue').useSoundCue
   const useState: typeof import('../../node_modules/nuxt/dist/app/composables/state').useState
   const useStopwatch: typeof import('../../composables/useTimer').useStopwatch
   const useTemplateRef: typeof import('vue').useTemplateRef
@@ -308,6 +311,8 @@ declare module 'vue' {
     readonly onUnmounted: UnwrapRef<typeof import('vue')['onUnmounted']>
     readonly onUpdated: UnwrapRef<typeof import('vue')['onUpdated']>
     readonly onWatcherCleanup: UnwrapRef<typeof import('vue')['onWatcherCleanup']>
+    readonly playBeep: UnwrapRef<typeof import('../../composables/useSoundCue')['playBeep']>
+    readonly playFinishCue: UnwrapRef<typeof import('../../composables/useSoundCue')['playFinishCue']>
     readonly prefetchComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['prefetchComponents']>
     readonly preloadComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['preloadComponents']>
     readonly preloadPayload: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/payload')['preloadPayload']>
@@ -430,6 +435,7 @@ declare module 'vue' {
     readonly useServerSeoMeta: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/head')['useServerSeoMeta']>
     readonly useShadowRoot: UnwrapRef<typeof import('vue')['useShadowRoot']>
     readonly useSlots: UnwrapRef<typeof import('vue')['useSlots']>
+    readonly useSoundCue: UnwrapRef<typeof import('../../composables/useSoundCue')['useSoundCue']>
     readonly useState: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/state')['useState']>
     readonly useStopwatch: UnwrapRef<typeof import('../../composables/useTimer')['useStopwatch']>
     readonly useTemplateRef: UnwrapRef<typeof import('vue')['useTemplateRef']>
