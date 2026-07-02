@@ -11,6 +11,15 @@ export type MuscleGroup =
   | 'forearms'
   | 'cardio'
   | 'full_body'
+  | 'lats'
+  | 'traps'
+  | 'mid_back'
+  | 'lower_back'
+  | 'quadriceps'
+  | 'hamstrings'
+  | 'adductors'
+  | 'abductors'
+  | 'neck'
 
 export interface MuscleMeta {
   id: MuscleGroup
@@ -30,7 +39,16 @@ export const MUSCLE_GROUPS: MuscleMeta[] = [
   { id: 'calves', label: 'Pantorrillas', color: '#34d399' },
   { id: 'forearms', label: 'Antebrazos', color: '#fb923c' },
   { id: 'cardio', label: 'Cardio', color: '#f87171' },
-  { id: 'full_body', label: 'Cuerpo completo', color: '#94a3b8' }
+  { id: 'full_body', label: 'Cuerpo completo', color: '#94a3b8' },
+  { id: 'lats', label: 'Dorsales', color: '#3b82f6' },
+  { id: 'traps', label: 'Trapecios', color: '#8b5cf6' },
+  { id: 'mid_back', label: 'Espalda media', color: '#6366f1' },
+  { id: 'lower_back', label: 'Espalda baja', color: '#4f46e5' },
+  { id: 'quadriceps', label: 'Cuádriceps', color: '#06b6d4' },
+  { id: 'hamstrings', label: 'Isquiotibiales', color: '#0891b2' },
+  { id: 'adductors', label: 'Aductores', color: '#0d9488' },
+  { id: 'abductors', label: 'Abductores', color: '#059669' },
+  { id: 'neck', label: 'Cuello', color: '#f97316' }
 ]
 
 export function muscleMeta(id: MuscleGroup): MuscleMeta {

@@ -125,6 +125,7 @@ declare global {
   const useCssModule: typeof import('vue').useCssModule
   const useCssVars: typeof import('vue').useCssVars
   const useError: typeof import('../../node_modules/nuxt/dist/app/composables/error').useError
+  const useExerciseCatalog: typeof import('../../composables/useExerciseCatalog').useExerciseCatalog
   const useFaviconPwaIcon: typeof import('../../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useFaviconPwaIcon
   const useFetch: typeof import('../../node_modules/nuxt/dist/app/composables/fetch').useFetch
   const useGymData: typeof import('../../composables/useGymData').useGymData
@@ -229,6 +230,9 @@ declare global {
   // @ts-ignore
   export type { MonthCell, StreakDay } from '../../composables/useCalendar'
   import('../../composables/useCalendar')
+  // @ts-ignore
+  export type { CatalogExercise } from '../../composables/useExerciseCatalog'
+  import('../../composables/useExerciseCatalog')
 }
 // for vue template auto import
 import { UnwrapRef } from 'vue'
@@ -358,6 +362,7 @@ declare module 'vue' {
     readonly useCssModule: UnwrapRef<typeof import('vue')['useCssModule']>
     readonly useCssVars: UnwrapRef<typeof import('vue')['useCssVars']>
     readonly useError: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/error')['useError']>
+    readonly useExerciseCatalog: UnwrapRef<typeof import('../../composables/useExerciseCatalog')['useExerciseCatalog']>
     readonly useFaviconPwaIcon: UnwrapRef<typeof import('../../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useFaviconPwaIcon']>
     readonly useFetch: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/fetch')['useFetch']>
     readonly useGymData: UnwrapRef<typeof import('../../composables/useGymData')['useGymData']>
