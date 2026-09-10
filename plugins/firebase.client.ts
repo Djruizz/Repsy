@@ -1,6 +1,9 @@
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
+import type { FirebaseApp } from 'firebase/app'
+import type { Auth } from 'firebase/auth'
+import type { Firestore } from 'firebase/firestore'
 
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig().public
@@ -14,26 +17,27 @@ export default defineNuxtPlugin(() => {
     appId: config.firebaseAppId
   }
 
-  if (import.meta.dev) {
-    const missing = Object.entries(firebaseConfig).filter(([, v]) => !v).map(([k]) => k)
-    if (missing.length) {
-      console.warn(
-        `[firebase] Faltan variables de configuración: ${missing.join(', ')}. ` +
-        'Revisa tu .env (NUXT_PUBLIC_FIREBASE_*)'
-      )
-    }
+  let provided: {
+    firebaseApp: FirebaseApp | null
+    auth: Auth | null
+    db: Firestore | null
   }
 
-  // Previene re-inicializar si ya existe una instancia
-  const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
-  const auth = getAuth(app)
-  const db = getFirestore(app)
+  const missing = Object.entries(firebaseConfig).filter(([, v]) => !v).map(([k]) => k)
+  if (missing.length) {
+    console.warn(
+      `[firebase] Faltan variables de configuración: ${missing.join(', ')}. ` +
+      'La sincronización en la nube estará desactivada. ' +
+      'Revisa tu .env (NUXT_PUBLIC_FIREBASE_*)'
+    )
+    provided = { firebaseApp: null, auth: null, db: null }
+  } else {
+    // Previene re-inicializar si ya existe una instancia
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
+    provided = { firebaseApp: app, auth: getAuth(app), db: getFirestore(app) }
+  }
 
   return {
-    provide: {
-      firebaseApp: app,
-      auth,
-      db
-    }
+    provide: provided
   }
 })

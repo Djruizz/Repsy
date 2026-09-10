@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Nuxt 3 SPA (PWA) for tracking gym routines. Spanish UI. No backend, no DB, no env vars — all state lives in `localStorage`.
+Nuxt 3 SPA (PWA) for tracking gym routines. Spanish UI. Local-first: all state lives in `localStorage`; **optional** Firebase cloud sync (auth + Firestore) activated by env vars — without them the app works fully offline/local.
 
 ## Commands
 
@@ -18,6 +18,13 @@ Nuxt 3 SPA (PWA) for tracking gym routines. Spanish UI. No backend, no DB, no en
 - **Do not delete `server.shim.ts`** or the `vite:extendConfig` hook in `nuxt.config.ts`. It's a dev-only shim that satisfies `@nuxt/vite-builder`'s `resolveServerEntry` when `ssr: false`. Removing it breaks the build.
 - PWA via `@vite-pwa/nuxt` with `registerType: 'autoUpdate'`. `devOptions.enabled: false` — PWA is only active in build/preview, not `npm run dev`.
 
+## Firebase / cloud sync
+
+- `plugins/firebase.client.ts` initializes Firebase from `NUXT_PUBLIC_FIREBASE_*` runtime config. If any var is missing, it provides `null` for `$firebaseApp`/`$auth`/`$db` and the app degrades to local-only — guard for null in consumers (`useFirebase` returns nullable types).
+- `composables/useAuth.ts` — email/password auth with Spanish error messages; module-level `user`/`authReady` refs.
+- `composables/useSync.ts` — LWW sync of the whole `GymData` doc to Firestore `users/{uid}`, keyed by `updatedAt`. Device ownership is cached in `localStorage` under `gymapp:syncUid`. Pull/push have 30s retry timers; `ready` only becomes true after a successful pull (never push possibly-stale local data over an unknown remote). `clearDeviceOwnership()` is called on logout (together with `resetAll()`) to wipe the account's local data.
+- Sync errors surface as an ember "Sync" chip in `AppHeader`.
+
 ## Styling — non-obvious
 
 Tailwind is extended with custom tokens in `tailwind.config.js` and component classes in `assets/css/main.css`. These are used everywhere and look like plugins but aren't:
@@ -29,9 +36,9 @@ Tailwind is extended with custom tokens in `tailwind.config.js` and component cl
 ## Architecture
 
 - `app.vue` → `NuxtLayout` (only `default.vue`: `AppHeader` + `<slot/>` + `AppTabbar`) → `NuxtPage`.
-- **State**: `composables/useGymData.ts` holds a singleton `ref<GymData>` synced to `localStorage` under `gymapp:data`. SPA-only — it freely touches `localStorage` without guards. The deep `watch` that persists is initialized once via a module-level `watchInitialized` flag.
-- **Data model** (`types/index.ts`): `GymData { days: Day[7], sessions: RunSession[] }`. The 7 days are fixed (`Lunes`..`Domingo`) and always present; `importData`/`readFromStorage` re-hydrate any missing day. `RoutineItem` is a discriminated union (`Exercise | Rest`) on `item.type`.
-- **Composables**: `useGymData` (CRUD + sessions + weight history + import/export), `useTimer` (`useStopwatch`, `useCountdown`, `formatTime`, `formatDuration`), `useCalendar` (Monday-based week helpers, `monthGrid`, `currentStreak`, `weekdayName`).
+- **State**: `composables/useGymData.ts` holds a singleton `ref<GymData>` synced to `localStorage` under `gymapp:data`. SPA-only — it freely touches `localStorage` without guards. The deep `watch` that persists (and stamps `updatedAt`) is initialized once via a module-level `watchInitialized` flag; its `touchGuard` prevents the recursive re-trigger of the sync-flush watcher from double-writing storage. On startup, `readFromStorage` purges incomplete sessions that didn't start today (stale "active" sessions).
+- **Data model** (`types/index.ts`): `GymData { days: Day[7], sessions: RunSession[] }`. The 7 days are fixed (`Lunes`..`Domingo`) and always present; `importData`/`readFromStorage` re-hydrate any missing day (days with unknown `dayName` are dropped and reported by `importData`, which returns `{ ok, ignoredDays }`). Merge-mode import preserves local day `id`s (remapping incoming sessions' `dayId`) so existing history stays linked. `RoutineItem` is a discriminated union (`Exercise | Rest`) on `item.type`.
+- **Composables**: `useGymData` (CRUD + sessions + weight history + import/export), `useTimer` (`useStopwatch`, `useCountdown` — also exposes `targetMs` —, `formatTime`, `formatDuration`), `useCalendar` (Monday-based week helpers, `monthGrid`, `currentStreak`, `weekdayName`; use `parseDateKey` for local "YYYY-MM-DD" keys — `new Date()` parses them as UTC), `useSoundCue` (WebAudio finish cue, muted flag under `gymapp:soundMuted`), `useExerciseCatalog` (search over `assets/exercises_es.json`).
 
 ## Pages
 
@@ -52,7 +59,7 @@ Components live in subdirectories of `components/`; Nuxt prepends the directory 
 - `components/streak/` → `<Streak*>`
 - `components/day/` → `<Day*>`
 - `components/run/` → `<Run*>`
-- Root-level (`AppHeader`, `AppTabbar`, `AppIcon`, `BaseModal`, `MuscleBadge`, `ExerciseForm`, `RestForm`, `ImportDialog`) have no prefix.
+- Root-level (`AppHeader`, `AppTabbar`, `AppIcon`, `BaseModal`, `MuscleBadge`, `ExerciseForm`, `RestForm`, `ImportDialog`, `AuthDialog`) have no prefix.
 
 **Never import components manually** — Nuxt auto-imports them. Only `composables/*` and `types/*` need explicit imports.
 

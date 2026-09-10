@@ -77,9 +77,16 @@ function readFile(file: File) {
 function doImport() {
   error.value = ''
   success.value = ''
-  const ok = importData(raw.value, mode.value)
-  if (ok) {
-    success.value = mode.value === 'replace' ? 'Rutinas reemplazadas correctamente.' : 'Rutinas fusionadas correctamente.'
+  const result = importData(raw.value, mode.value)
+  if (result.ok) {
+    const base =
+      mode.value === 'replace'
+        ? 'Rutinas reemplazadas correctamente.'
+        : 'Rutinas fusionadas correctamente.'
+    const ignored = result.ignoredDays.length
+      ? ` Se ignoraron días no reconocidos: ${result.ignoredDays.join(', ')}.`
+      : ''
+    success.value = base + ignored
     setTimeout(() => emit('close'), 700)
   } else {
     error.value = 'El JSON no es válido. Revisa el formato e inténtalo de nuevo.'

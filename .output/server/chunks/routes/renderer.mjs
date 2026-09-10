@@ -278,14 +278,9 @@ async function renderRoute(event, ssrError) {
 		
 		
 		
-		if (ssrContext["~lazyHydratedModules"]) {
-			for (const id of ssrContext["~lazyHydratedModules"]) {
-				ssrContext.modules?.delete(id);
-			}
-		}
-		
-		ssrContext.head.push({ link: getPreloadLinks(ssrContext, renderer.rendererContext) }, headEntryOptions);
-		ssrContext.head.push({ link: getPrefetchLinks(ssrContext, renderer.rendererContext) }, headEntryOptions);
+		const dependencyOptions = ssrContext["~lazyHydratedModules"]?.size ? { exclude: ssrContext["~lazyHydratedModules"] } : undefined;
+		const stylesheetHrefs = new Set(link.map((l) => l.href));
+		ssrContext.head.push({ link: [...getPreloadLinks(ssrContext, renderer.rendererContext, dependencyOptions), ...getPrefetchLinks(ssrContext, renderer.rendererContext, dependencyOptions)].filter((l) => !stylesheetHrefs.has(l.href)) }, headEntryOptions);
 		
 		ssrContext.head.push({ script: renderPayloadJsonScript({
 			ssrContext,

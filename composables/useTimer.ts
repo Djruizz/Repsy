@@ -168,8 +168,8 @@ export function useCountdown() {
   const tenths = computed(() => Math.floor((remainingMs.value % 1000) / 100))
   const progress = computed(() => {
     if (targetMs.value <= 0) return 0
-    return Math.min(1, 1 - remainingMs.value / targetMs.value)
+    return Math.min(1, Math.max(0, 1 - remainingMs.value / targetMs.value))
   })
 
-  return { remainingMs, seconds, tenths, progress, running, paused, finished, start, pause, resume, stop, skip, add, seed }
+  return { remainingMs, targetMs, seconds, tenths, progress, running, paused, finished, start, pause, resume, stop, skip, add, seed }
 }

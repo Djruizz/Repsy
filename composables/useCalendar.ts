@@ -25,6 +25,16 @@ export function localDayKey(value: string | Date): string {
   return dateKey(d);
 }
 
+/**
+ * Parsea una clave local "YYYY-MM-DD" como fecha local.
+ * `new Date("YYYY-MM-DD")` se interpreta como UTC y desfasa un día
+ * en zonas horarias negativas (p. ej. América).
+ */
+export function parseDateKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 export function todayKey(): string {
   return dateKey(new Date());
 }
@@ -112,43 +122,6 @@ export const WEEKDAY_HEADERS = [
   "Sáb",
   "Dom",
 ];
-
-export interface StreakDay {
-  key: string;
-  date: Date;
-  completed: boolean;
-  isToday: boolean;
-}
-
-export function streakGrid(
-  sessions: { date: string; completed: boolean }[],
-  weeks = 12,
-): StreakDay[][] {
-  const completedSet = new Set(
-    sessions.filter((s) => s.completed).map((s) => localDayKey(s.date)),
-  );
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = startOfWeek(today);
-  const start = addDays(end, -(weeks - 1) * 7);
-  const cols: StreakDay[][] = [];
-  for (let w = 0; w < weeks; w++) {
-    const colStart = addDays(start, w * 7);
-    const col: StreakDay[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = addDays(colStart, i);
-      const key = dateKey(d);
-      col.push({
-        key,
-        date: d,
-        completed: completedSet.has(key),
-        isToday: isToday(d),
-      });
-    }
-    cols.push(col);
-  }
-  return cols;
-}
 
 const WEEKDAY_NAMES = [
   "Lunes",

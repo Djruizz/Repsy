@@ -102,8 +102,15 @@ import {
 } from "~/composables/useCalendar";
 
 const route = useRoute();
-const { getDay, getActiveSession, startSession, completeSession, sessions } =
-  useGymData();
+const {
+  getDay,
+  getActiveSession,
+  startSession,
+  completeSession,
+  deleteSession,
+  sessions,
+  getWeightHistory,
+} = useGymData();
 
 const day = computed(() => getDay(String(route.params.id)));
 const todayDayName = computed(() => weekdayName(new Date()));
@@ -145,9 +152,15 @@ const lastWeights = ref<Record<string, number>>({});
 
 onMounted(() => {
   if (!isTodayDay.value || !canRun.value) return;
-  if (day.value)
-    session.value =
-      getActiveSession(day.value.id) ?? startSession(day.value.id);
+  if (day.value) {
+    let existing = getActiveSession(day.value.id);
+    // Sesión abandonada en un día anterior: descartarla y empezar de cero
+    if (existing && localDayKey(existing.startedAt) !== todayKey.value) {
+      deleteSession(existing.id);
+      existing = undefined;
+    }
+    session.value = existing ?? startSession(day.value.id);
+  }
   seedCurrentRest();
   if (session.value?.startedAt) {
     const elapsed = Date.now() - new Date(session.value.startedAt).getTime();
@@ -237,18 +250,6 @@ function startSetRest(setIdx: number) {
   countdown.start(item.rest_between_sets);
 }
 
-// Auto-advance when countdown finishes
-// watch(
-//   () => countdown.finished.value,
-//   (done) => {
-//     if (done && setRestActive.value) {
-//       setTimeout(() => {
-//         if (setRestActive.value) endSetRest();
-//       }, 600);
-//     }
-//   },
-// );
-
 // Cue sound when the inter-set rest countdown reaches zero (so the user
 // hears the "go" cue even before pressing Terminar).
 watch(
@@ -258,12 +259,29 @@ watch(
   },
 );
 
-// Pre-fill weight when exercise changes
+// Pre-fill weight when exercise changes: peso de esta sesión o, tras recargar,
+// el último peso registrado para ese ejercicio en el historial.
+function lastWeightFor(name: string): number {
+  const history = getWeightHistory(name);
+  if (!history.length) return 0;
+  let lastKey = "";
+  let max = 0;
+  for (const e of history) {
+    const k = localDayKey(e.date);
+    if (k !== lastKey) {
+      lastKey = k;
+      max = e.weight;
+    } else if (e.weight > max) {
+      max = e.weight;
+    }
+  }
+  return max;
+}
+
 watch(current, (c) => {
   endSetTime();
   if (c?.type === "exercise") {
-    const prev = lastWeights.value[c.name] ?? 0;
-    currentWeight.value = prev;
+    currentWeight.value = lastWeights.value[c.name] ?? lastWeightFor(c.name);
   } else {
     currentWeight.value = 0;
   }
@@ -355,6 +373,10 @@ function skipExercise() {
 function saveRestRemaining(item: Rest) {
   if (!session.value) return;
   session.value.restElapsed[item.id] = restCountdown.seconds.value;
+  // Guardar también el objetivo efectivo (incluye los +15/+30/+60s añadidos)
+  session.value.restCycle[item.id] = Math.round(
+    restCountdown.targetMs.value / 1000,
+  );
 }
 
 function seedCurrentRest() {
@@ -362,7 +384,9 @@ function seedCurrentRest() {
   if (current.value?.type === "rest") {
     const saved = session.value?.restElapsed[current.value.id] ?? 0;
     if (saved > 0 && session.value?.itemStates[current.value.id] !== "done") {
-      restCountdown.seed(saved, current.value.duration);
+      const target =
+        session.value?.restCycle[current.value.id] ?? current.value.duration;
+      restCountdown.seed(saved, Math.max(target, saved));
     }
   }
 }
@@ -392,22 +416,17 @@ function skipRest() {
   session.value.itemStates[item.id] = "done";
 }
 
-// Auto-complete rest when the countdown finishes
+// Auto-complete rest when the countdown finishes: se marca done de inmediato
+// (si el usuario sale justo entonces, el descanso no se reinicia al volver).
 watch(
   () => restCountdown.finished.value,
   (done) => {
     if (!done) return;
     const item = current.value;
     if (item?.type !== "rest") return;
-    if (session.value?.itemStates[item.id] === "done") return;
+    if (!session.value || session.value.itemStates[item.id] === "done") return;
     playFinishCue();
-    saveRestRemaining(item as Rest);
-    const itemId = item.id;
-    setTimeout(() => {
-      if (session.value && session.value.itemStates[itemId] !== "done") {
-        session.value.itemStates[itemId] = "done";
-      }
-    }, 900);
+    session.value.itemStates[item.id] = "done";
   },
 );
 

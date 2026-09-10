@@ -6,8 +6,8 @@ export function useFirebase() {
   const nuxtApp = useNuxtApp()
 
   return {
-    firebaseApp: nuxtApp.$firebaseApp as FirebaseApp,
-    auth: nuxtApp.$auth as Auth,
-    db: nuxtApp.$db as Firestore
+    firebaseApp: nuxtApp.$firebaseApp as FirebaseApp | null,
+    auth: nuxtApp.$auth as Auth | null,
+    db: nuxtApp.$db as Firestore | null
   }
 }

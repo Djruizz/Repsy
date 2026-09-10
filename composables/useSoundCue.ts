@@ -64,12 +64,6 @@ function tone(
   osc.stop(end + 0.02)
 }
 
-export function playBeep(frequency = 880, durationMs = 200) {
-  loadInitial()
-  if (muted.value) return
-  tone(frequency, 0, durationMs, 0.25)
-}
-
 export function playFinishCue() {
   loadInitial()
   if (muted.value) return
@@ -88,7 +82,6 @@ export function useSoundCue() {
     toggleMuted() {
       muted.value = !muted.value
     },
-    playBeep,
     playFinishCue,
   }
 }

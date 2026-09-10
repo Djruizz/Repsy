@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { localDayKey } from "~/composables/useCalendar";
+import { localDayKey, parseDateKey } from "~/composables/useCalendar";
 const { getAllExercises, getWeightHistory } = useGymData();
 
 const exercises = computed(() => getAllExercises());
@@ -65,20 +65,30 @@ const history = computed(() =>
   selected.value ? getWeightHistory(selected.value) : [],
 );
 
+// Peso máximo por día local (mismo criterio que el chart)
+const byDateMax = computed(() => {
+  const m = new Map<string, number>();
+  for (const h of history.value) {
+    const k = localDayKey(h.date);
+    const cur = m.get(k);
+    if (cur == null || h.weight > cur) m.set(k, h.weight);
+  }
+  return m;
+});
+const sortedDates = computed(() =>
+  [...byDateMax.value.keys()].sort((a, b) => a.localeCompare(b)),
+);
+
 const maxWeight = computed(() =>
   Math.max(...history.value.map((h) => h.weight), 0),
 );
 const lastWeight = computed(() => {
-  const sorted = [...history.value].sort((a, b) =>
-    b.date.localeCompare(a.date),
-  );
-  return sorted[0]?.weight ?? 0;
+  const dates = sortedDates.value;
+  return dates.length ? (byDateMax.value.get(dates[dates.length - 1]) ?? 0) : 0;
 });
 const firstWeight = computed(() => {
-  const sorted = [...history.value].sort((a, b) =>
-    a.date.localeCompare(b.date),
-  );
-  return sorted[0]?.weight ?? 0;
+  const dates = sortedDates.value;
+  return dates.length ? (byDateMax.value.get(dates[0]) ?? 0) : 0;
 });
 const progressDelta = computed(() => lastWeight.value - firstWeight.value);
 
@@ -86,25 +96,15 @@ interface ChartPoint {
   weight: number;
   label: string;
 }
-const chartData = computed<ChartPoint[]>(() => {
-  const byDate = new Map<string, number>();
-  for (const h of history.value) {
-    const key = localDayKey(h.date);
-    const existing = byDate.get(key);
-    if (existing == null || h.weight > existing) byDate.set(key, h.weight);
-  }
-  const entries = Array.from(byDate.entries());
-  entries.sort((a, b) => a[0].localeCompare(b[0]));
-  const points: ChartPoint[] = [];
-  for (const [date, weight] of entries) {
-    const d = new Date(date);
-    points.push({
-      weight,
+const chartData = computed<ChartPoint[]>(() =>
+  sortedDates.value.slice(-20).map((date) => {
+    const d = parseDateKey(date);
+    return {
+      weight: byDateMax.value.get(date) ?? 0,
       label: `${d.getDate()}/${d.getMonth() + 1}`,
-    });
-  }
-  return points.slice(-20);
-});
+    };
+  }),
+);
 
 interface GroupedEntry {
   date: string;

@@ -21,6 +21,15 @@
       </NuxtLink>
 
       <div class="flex items-center gap-2">
+        <span
+          v-if="lastError"
+          class="inline-flex items-center gap-1.5 rounded-full bg-ember/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-ember"
+          title="No se pudo sincronizar con la nube. Se reintentará automáticamente."
+        >
+          <AppIcon name="cloud-off" class="h-3.5 w-3.5" />
+          Sync
+        </span>
+
         <NuxtLink
           v-if="runningSession"
           :to="`/correr/${runningSession.dayId}`"
@@ -31,9 +40,7 @@
             <span
               class="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-sky-400"
             />
-            <span
-              class="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-400"
-            />
+            <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-400" />
           </span>
           En curso
         </NuxtLink>
@@ -112,15 +119,24 @@
 
 <script setup lang="ts">
 import { useSoundCue } from "~/composables/useSoundCue";
+import { localDayKey, todayKey } from "~/composables/useCalendar";
 
-const { exportData, sessions } = useGymData();
+const { exportData, sessions, resetAll } = useGymData();
 const { muted, toggleMuted } = useSoundCue();
 const { isLoggedIn, userEmail, logout } = useAuth();
+const { lastError, clearDeviceOwnership } = useSync();
 const showImport = ref(false);
 const showAuth = ref(false);
 const menuOpen = ref(false);
 
-const runningSession = computed(() => sessions.value.find((s) => !s.completed));
+// Solo sesiones activas de hoy: una sesión de otro día llevaría a un
+// runner bloqueado ("no es tu día") y nunca podría finalizarse.
+const runningSession = computed(() =>
+  sessions.value.find(
+    (s) =>
+      !s.completed && localDayKey(s.startedAt ?? s.date) === todayKey(),
+  ),
+);
 
 function onImport() {
   menuOpen.value = false;
@@ -134,7 +150,23 @@ function onLogin() {
 
 async function onLogout() {
   menuOpen.value = false;
-  await logout();
+  try {
+    await logout();
+  } catch (err) {
+    console.warn("[auth] Error al cerrar sesión:", err);
+    return;
+  }
+  // Borrar los datos locales de la cuenta en este dispositivo.
+  // Si hay cambios sin sincronizar, pedir confirmación (pérdida de datos).
+  const wipe = lastError.value
+    ? window.confirm(
+        "No se pudieron sincronizar algunos cambios con la nube.\n¿Borrar igualmente los datos locales de este dispositivo?",
+      )
+    : true;
+  if (wipe) {
+    clearDeviceOwnership();
+    resetAll();
+  }
 }
 
 function onExport() {

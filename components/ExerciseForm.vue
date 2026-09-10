@@ -201,7 +201,8 @@
           !draft.name.trim() ||
           draft.sets < 1 ||
           draft.time < 0 ||
-          draft.rest_between_sets < 0
+          draft.rest_between_sets < 0 ||
+          (draft.score_by === 'time' && !(draft.time >= 1))
         "
       >
         Guardar

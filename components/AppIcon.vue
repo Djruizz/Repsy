@@ -49,6 +49,7 @@ const paths: Record<string, string> = {
   'volume-on': '<path d="M4 10v4h3l4 3V7L7 10H4z" fill="currentColor" stroke="none"/><path d="M15 9.5a3.5 3.5 0 0 1 0 5"/><path d="M17.5 7a6 6 0 0 1 0 10"/>',
   'volume-off': '<path d="M4 10v4h3l4 3V7L7 10H4z" fill="currentColor" stroke="none"/><path d="M16 9l5 5M21 9l-5 5"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/>',
-  logout: '<path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M15 8l4 4-4 4M19 12H9"/>'
+  logout: '<path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M15 8l4 4-4 4M19 12H9"/>',
+  'cloud-off': '<path d="M17.5 17.5H7a4 4 0 0 1-.9-7.9 6 6 0 0 1 11.4 1.4 4 4 0 0 1 .9 6.5"/><path d="M4 4l16 16"/>'
 }
 </script>

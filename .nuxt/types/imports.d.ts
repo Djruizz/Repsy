@@ -78,7 +78,7 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
-  const playBeep: typeof import('../../composables/useSoundCue').playBeep
+  const parseDateKey: typeof import('../../composables/useCalendar').parseDateKey
   const playFinishCue: typeof import('../../composables/useSoundCue').playFinishCue
   const prefetchComponents: typeof import('../../node_modules/nuxt/dist/app/composables/preload').prefetchComponents
   const preloadComponents: typeof import('../../node_modules/nuxt/dist/app/composables/preload').preloadComponents
@@ -105,7 +105,6 @@ declare global {
   const showError: typeof import('../../node_modules/nuxt/dist/app/composables/error').showError
   const startOfMonth: typeof import('../../composables/useCalendar').startOfMonth
   const startOfWeek: typeof import('../../composables/useCalendar').startOfWeek
-  const streakGrid: typeof import('../../composables/useCalendar').streakGrid
   const toRaw: typeof import('vue').toRaw
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
@@ -231,7 +230,7 @@ declare global {
   export type { Component, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
-  export type { MonthCell, StreakDay } from '../../composables/useCalendar'
+  export type { MonthCell } from '../../composables/useCalendar'
   import('../../composables/useCalendar')
   // @ts-ignore
   export type { CatalogExercise } from '../../composables/useExerciseCatalog'
@@ -318,7 +317,7 @@ declare module 'vue' {
     readonly onUnmounted: UnwrapRef<typeof import('vue')['onUnmounted']>
     readonly onUpdated: UnwrapRef<typeof import('vue')['onUpdated']>
     readonly onWatcherCleanup: UnwrapRef<typeof import('vue')['onWatcherCleanup']>
-    readonly playBeep: UnwrapRef<typeof import('../../composables/useSoundCue')['playBeep']>
+    readonly parseDateKey: UnwrapRef<typeof import('../../composables/useCalendar')['parseDateKey']>
     readonly playFinishCue: UnwrapRef<typeof import('../../composables/useSoundCue')['playFinishCue']>
     readonly prefetchComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['prefetchComponents']>
     readonly preloadComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['preloadComponents']>
@@ -345,7 +344,6 @@ declare module 'vue' {
     readonly showError: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/error')['showError']>
     readonly startOfMonth: UnwrapRef<typeof import('../../composables/useCalendar')['startOfMonth']>
     readonly startOfWeek: UnwrapRef<typeof import('../../composables/useCalendar')['startOfWeek']>
-    readonly streakGrid: UnwrapRef<typeof import('../../composables/useCalendar')['streakGrid']>
     readonly toRaw: UnwrapRef<typeof import('vue')['toRaw']>
     readonly toRef: UnwrapRef<typeof import('vue')['toRef']>
     readonly toRefs: UnwrapRef<typeof import('vue')['toRefs']>

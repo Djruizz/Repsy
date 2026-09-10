@@ -11,6 +11,8 @@ const user = ref<User | null>(null)
 const authReady = ref(false)
 let stateInitialized = false
 
+const NOT_CONFIGURED = 'La sincronización en la nube no está configurada en esta compilación.'
+
 const ERROR_MESSAGES: Record<string, string> = {
   'auth/email-already-in-use': 'Ya existe una cuenta con este correo.',
   'auth/invalid-email': 'El correo no es válido.',
@@ -34,16 +36,22 @@ export function useAuth() {
 
   if (!stateInitialized) {
     stateInitialized = true
-    onAuthStateChanged(auth, (u) => {
-      user.value = u
+    if (auth) {
+      onAuthStateChanged(auth, (u) => {
+        user.value = u
+        authReady.value = true
+      })
+    } else {
+      // Sin Firebase configurado: la app funciona 100% local
       authReady.value = true
-    })
+    }
   }
 
   const isLoggedIn = computed(() => user.value !== null)
   const userEmail = computed(() => user.value?.email ?? '')
 
   async function register(email: string, password: string): Promise<string | null> {
+    if (!auth) return NOT_CONFIGURED
     try {
       await createUserWithEmailAndPassword(auth, email.trim(), password)
       return null
@@ -53,6 +61,7 @@ export function useAuth() {
   }
 
   async function login(email: string, password: string): Promise<string | null> {
+    if (!auth) return NOT_CONFIGURED
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password)
       return null
@@ -62,6 +71,7 @@ export function useAuth() {
   }
 
   async function logout(): Promise<void> {
+    if (!auth) return
     await signOut(auth)
   }
 

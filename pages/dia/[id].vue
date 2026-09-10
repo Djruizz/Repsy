@@ -128,7 +128,10 @@ function saveExercise(ex: Exercise) {
     ...ex,
     sets: Math.max(1, Math.round(ex.sets || 1)),
     rpe: Math.max(1, Math.min(10, Math.round(ex.rpe || 7))),
-    time: Math.max(0, Math.round(ex.time || 0)),
+    time:
+      ex.score_by === "time"
+        ? Math.max(1, Math.round(ex.time || 0))
+        : Math.max(0, Math.round(ex.time || 0)),
     rest_between_sets: Math.max(0, Math.round(ex.rest_between_sets || 0)),
   }
   if (modal.value?.mode === "add") addItem(day.value!.id, clamped);

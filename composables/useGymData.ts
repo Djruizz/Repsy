@@ -1,5 +1,6 @@
 import { ref, watch, computed } from 'vue'
 import type { Day, RoutineItem, Exercise, Rest, GymData, RunSession, MuscleGroup } from '~/types'
+import { localDayKey, todayKey } from '~/composables/useCalendar'
 
 const STORAGE_KEY = 'gymapp:data'
 const DATA_VERSION = 1
@@ -30,6 +31,15 @@ function defaultData(): GymData {
 }
 
 const REQUIRED_DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+
+// Descarta sesiones incompletas que no empezaron hoy: evita reanudar
+// sesiones abandonadas con progreso caduco y cronómetro inflado.
+function expireStaleSessions(sessions: RunSession[]): RunSession[] {
+  const today = todayKey()
+  return sessions.filter(
+    (s) => s.completed || localDayKey(s.startedAt ?? s.date) === today,
+  )
+}
 
 function normalizeSession(s: Partial<RunSession>): RunSession {
   return {
@@ -63,13 +73,20 @@ function readFromStorage(): GymData {
         : []
       const byName = new Map(storedDays.map((d) => [d.dayName, d]))
       const days = REQUIRED_DAYS.map((name) => byName.get(name) ?? emptyDay(name))
-      return {
+      const storedSessions = Array.isArray(parsed.sessions)
+        ? parsed.sessions.map(normalizeSession)
+        : []
+      const sessions = expireStaleSessions(storedSessions)
+      const result: GymData = {
         version: DATA_VERSION,
         days,
-        sessions: Array.isArray(parsed.sessions)
-          ? parsed.sessions.map(normalizeSession)
-          : []
+        sessions,
       }
+      if (sessions.length !== storedSessions.length) {
+        // Se purgaron sesiones caducas: persistir de inmediato
+        writeToStorage(result)
+      }
+      return result
     }
   } catch {
     // fall through to default
@@ -99,9 +116,12 @@ export function useGymData() {
     watch(
       data,
       (d) => {
+        // Guard reentrante: el sellado de `updatedAt` dispararía este
+        // watcher de nuevo (flush sync) y duplicaría la escritura.
+        if (touchGuard) return
         if (applyingRemote) {
           applyingRemote = false
-        } else if (!touchGuard) {
+        } else {
           touchGuard = true
           d.updatedAt = new Date().toISOString()
           touchGuard = false
@@ -278,36 +298,62 @@ export function useGymData() {
     }
   }
 
-  function importData(json: string, mode: 'replace' | 'merge' = 'replace'): boolean {
+  function importData(
+    json: string,
+    mode: 'replace' | 'merge' = 'replace',
+  ): { ok: boolean; ignoredDays: string[] } {
     try {
       const parsed = JSON.parse(json) as Partial<GymData>
+      const incomingDays = Array.isArray(parsed.days) ? parsed.days.map(normalizeDay) : []
+      // La app solo soporta los 7 días fijos; el resto se descarta con aviso
+      const ignoredDays = [
+        ...new Set(
+          incomingDays
+            .map((d) => d.dayName)
+            .filter((name) => !!name && !REQUIRED_DAYS.includes(name)),
+        ),
+      ]
+
       if (mode === 'replace') {
+        const byName = new Map(incomingDays.map((d) => [d.dayName, d]))
         data.value = {
           version: DATA_VERSION,
-          days: Array.isArray(parsed.days) ? parsed.days.map(normalizeDay) : defaultData().days,
-          sessions: Array.isArray(parsed.sessions) ? parsed.sessions.map(normalizeSession) : []
+          days: REQUIRED_DAYS.map((name) => byName.get(name) ?? emptyDay(name)),
+          sessions: Array.isArray(parsed.sessions)
+            ? parsed.sessions.map(normalizeSession)
+            : [],
         }
       } else {
-        const incomingDays = Array.isArray(parsed.days) ? parsed.days.map(normalizeDay) : []
+        // Fusionar conservando el id del día local: las sesiones existentes
+        // siguen vinculadas a su día (historial y calendario intactos).
         const existingByName = new Map(data.value.days.map((d) => [d.dayName, d]))
+        const idMap = new Map<string, string>()
         for (const incoming of incomingDays) {
-          existingByName.set(incoming.dayName, incoming)
+          const existing = existingByName.get(incoming.dayName)
+          if (existing) {
+            idMap.set(incoming.id, existing.id)
+            existingByName.set(incoming.dayName, { ...incoming, id: existing.id })
+          } else {
+            existingByName.set(incoming.dayName, incoming)
+          }
         }
         data.value.days = REQUIRED_DAYS.map((name) => existingByName.get(name) ?? emptyDay(name))
 
+        // Remapear dayId de las sesiones entrantes a los ids preservados
         const incomingSessions = Array.isArray(parsed.sessions)
           ? parsed.sessions.map(normalizeSession)
           : []
         const existingIds = new Set(data.value.sessions.map((s) => s.id))
         for (const s of incomingSessions) {
-          if (!existingIds.has(s.id)) {
-            data.value.sessions.push(s)
-          }
+          if (existingIds.has(s.id)) continue
+          const mappedDayId = idMap.get(s.dayId)
+          if (mappedDayId) s.dayId = mappedDayId
+          data.value.sessions.push(s)
         }
       }
-      return true
+      return { ok: true, ignoredDays }
     } catch {
-      return false
+      return { ok: false, ignoredDays: [] }
     }
   }
 
