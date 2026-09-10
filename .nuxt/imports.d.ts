@@ -32,6 +32,7 @@ export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composab
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
 export { startOfWeek, addDays, dateKey, localDayKey, todayKey, isSameDay, isToday, weekDays, shortWeekday, monthLabel, startOfMonth, addMonths, isSameMonth, monthGrid, MONTH_NAMES, WEEKDAY_HEADERS, streakGrid, weekdayName, currentStreak, MonthCell, StreakDay } from '../composables/useCalendar';
 export { useExerciseCatalog, CatalogExercise } from '../composables/useExerciseCatalog';
+export { useFirebase } from '../composables/useFirebase';
 export { useGymData } from '../composables/useGymData';
 export { playBeep, playFinishCue, useSoundCue } from '../composables/useSoundCue';
 export { useStopwatch, formatTime, formatDuration, useCountdown } from '../composables/useTimer';

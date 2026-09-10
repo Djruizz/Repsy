@@ -1,0 +1,17 @@
+# Dependencias
+node_modules/
+
+# Nuxt build
+.nuxt/
+.output/
+dist/
+
+# Env — nunca commitear credenciales
+.env
+.env.*
+!.env.example
+
+# Logs y archivos de sistema
+*.log
+.DS_Store
+Thumbs.db

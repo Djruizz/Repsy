@@ -128,6 +128,7 @@ declare global {
   const useExerciseCatalog: typeof import('../../composables/useExerciseCatalog').useExerciseCatalog
   const useFaviconPwaIcon: typeof import('../../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useFaviconPwaIcon
   const useFetch: typeof import('../../node_modules/nuxt/dist/app/composables/fetch').useFetch
+  const useFirebase: typeof import('../../composables/useFirebase').useFirebase
   const useGymData: typeof import('../../composables/useGymData').useGymData
   const useHead: typeof import('../../node_modules/nuxt/dist/app/composables/head').useHead
   const useHeadSafe: typeof import('../../node_modules/nuxt/dist/app/composables/head').useHeadSafe
@@ -365,6 +366,7 @@ declare module 'vue' {
     readonly useExerciseCatalog: UnwrapRef<typeof import('../../composables/useExerciseCatalog')['useExerciseCatalog']>
     readonly useFaviconPwaIcon: UnwrapRef<typeof import('../../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useFaviconPwaIcon']>
     readonly useFetch: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/fetch')['useFetch']>
+    readonly useFirebase: UnwrapRef<typeof import('../../composables/useFirebase')['useFirebase']>
     readonly useGymData: UnwrapRef<typeof import('../../composables/useGymData')['useGymData']>
     readonly useHead: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/head')['useHead']>
     readonly useHeadSafe: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/head')['useHeadSafe']>
