@@ -52,30 +52,53 @@
               v-if="menuOpen"
               class="absolute right-0 z-50 overflow-hidden border shadow-xl top-11 w-52 rounded-xl border-white/10 bg-ink-800"
             >
+              <template v-if="isLoggedIn">
+                <div class="flex items-center gap-3 px-4 py-3 border-b border-white/5">
+                  <AppIcon name="user" class="w-4 h-4 text-lime" />
+                  <p class="text-xs font-medium truncate text-slate-300">{{ userEmail }}</p>
+                </div>
+                <button
+                  class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
+                  @click="onLogout"
+                >
+                  <AppIcon name="logout" class="w-4 h-4" />
+                  Cerrar sesión
+                </button>
+              </template>
               <button
+                v-else
                 class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
-                @click="onImport"
+                @click="onLogin"
               >
-                <AppIcon name="import" class="w-4 h-4" />
-                Importar
+                <AppIcon name="user" class="w-4 h-4" />
+                Acceder
               </button>
-              <button
-                class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
-                @click="onExport"
-              >
-                <AppIcon name="export" class="w-4 h-4" />
-                Exportar
-              </button>
-              <button
-                class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
-                @click="onToggleMute"
-              >
-                <AppIcon
-                  :name="muted ? 'volume-off' : 'volume-on'"
-                  class="w-4 h-4"
-                />
-                {{ muted ? "Activar sonido" : "Silenciar" }}
-              </button>
+              <div class="border-t border-white/5">
+                <button
+                  class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
+                  @click="onImport"
+                >
+                  <AppIcon name="import" class="w-4 h-4" />
+                  Importar
+                </button>
+                <button
+                  class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
+                  @click="onExport"
+                >
+                  <AppIcon name="export" class="w-4 h-4" />
+                  Exportar
+                </button>
+                <button
+                  class="flex items-center w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
+                  @click="onToggleMute"
+                >
+                  <AppIcon
+                    :name="muted ? 'volume-off' : 'volume-on'"
+                    class="w-4 h-4"
+                  />
+                  {{ muted ? "Activar sonido" : "Silenciar" }}
+                </button>
+              </div>
             </div>
           </Transition>
         </div>
@@ -83,6 +106,7 @@
     </div>
 
     <LazyImportDialog v-if="showImport" @close="showImport = false" />
+    <LazyAuthDialog v-if="showAuth" @close="showAuth = false" />
   </header>
 </template>
 
@@ -91,7 +115,9 @@ import { useSoundCue } from "~/composables/useSoundCue";
 
 const { exportData, sessions } = useGymData();
 const { muted, toggleMuted } = useSoundCue();
+const { isLoggedIn, userEmail, logout } = useAuth();
 const showImport = ref(false);
+const showAuth = ref(false);
 const menuOpen = ref(false);
 
 const runningSession = computed(() => sessions.value.find((s) => !s.completed));
@@ -99,6 +125,16 @@ const runningSession = computed(() => sessions.value.find((s) => !s.completed));
 function onImport() {
   menuOpen.value = false;
   showImport.value = true;
+}
+
+function onLogin() {
+  menuOpen.value = false;
+  showAuth.value = true;
+}
+
+async function onLogout() {
+  menuOpen.value = false;
+  await logout();
 }
 
 function onExport() {

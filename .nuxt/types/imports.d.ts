@@ -120,6 +120,7 @@ declare global {
   const useAppleSplashScreenPwaIcon: typeof import('../../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useAppleSplashScreenPwaIcon
   const useAsyncData: typeof import('../../node_modules/nuxt/dist/app/composables/asyncData').useAsyncData
   const useAttrs: typeof import('vue').useAttrs
+  const useAuth: typeof import('../../composables/useAuth').useAuth
   const useCookie: typeof import('../../node_modules/nuxt/dist/app/composables/cookie').useCookie
   const useCountdown: typeof import('../../composables/useTimer').useCountdown
   const useCssModule: typeof import('vue').useCssModule
@@ -207,6 +208,7 @@ declare global {
   const useSoundCue: typeof import('../../composables/useSoundCue').useSoundCue
   const useState: typeof import('../../node_modules/nuxt/dist/app/composables/state').useState
   const useStopwatch: typeof import('../../composables/useTimer').useStopwatch
+  const useSync: typeof import('../../composables/useSync').useSync
   const useTemplateRef: typeof import('vue').useTemplateRef
   const useTransitionState: typeof import('vue').useTransitionState
   const useTransparentPwaIcon: typeof import('../../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index').useTransparentPwaIcon
@@ -358,6 +360,7 @@ declare module 'vue' {
     readonly useAppleSplashScreenPwaIcon: UnwrapRef<typeof import('../../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useAppleSplashScreenPwaIcon']>
     readonly useAsyncData: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/asyncData')['useAsyncData']>
     readonly useAttrs: UnwrapRef<typeof import('vue')['useAttrs']>
+    readonly useAuth: UnwrapRef<typeof import('../../composables/useAuth')['useAuth']>
     readonly useCookie: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/cookie')['useCookie']>
     readonly useCountdown: UnwrapRef<typeof import('../../composables/useTimer')['useCountdown']>
     readonly useCssModule: UnwrapRef<typeof import('vue')['useCssModule']>
@@ -445,6 +448,7 @@ declare module 'vue' {
     readonly useSoundCue: UnwrapRef<typeof import('../../composables/useSoundCue')['useSoundCue']>
     readonly useState: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/state')['useState']>
     readonly useStopwatch: UnwrapRef<typeof import('../../composables/useTimer')['useStopwatch']>
+    readonly useSync: UnwrapRef<typeof import('../../composables/useSync')['useSync']>
     readonly useTemplateRef: UnwrapRef<typeof import('vue')['useTemplateRef']>
     readonly useTransitionState: UnwrapRef<typeof import('vue')['useTransitionState']>
     readonly useTransparentPwaIcon: UnwrapRef<typeof import('../../node_modules/@vite-pwa/nuxt/dist/runtime/composables/index')['useTransparentPwaIcon']>

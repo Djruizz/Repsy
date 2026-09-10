@@ -17,6 +17,7 @@ interface _GlobalComponents {
   AppHeader: typeof import("../../components/AppHeader.vue")['default']
   AppIcon: typeof import("../../components/AppIcon.vue")['default']
   AppTabbar: typeof import("../../components/AppTabbar.vue")['default']
+  AuthDialog: typeof import("../../components/AuthDialog.vue")['default']
   BaseModal: typeof import("../../components/BaseModal.vue")['default']
   ExerciseForm: typeof import("../../components/ExerciseForm.vue")['default']
   ImportDialog: typeof import("../../components/ImportDialog.vue")['default']
@@ -90,6 +91,7 @@ interface _GlobalComponents {
   LazyAppHeader: LazyComponent<typeof import("../../components/AppHeader.vue")['default']>
   LazyAppIcon: LazyComponent<typeof import("../../components/AppIcon.vue")['default']>
   LazyAppTabbar: LazyComponent<typeof import("../../components/AppTabbar.vue")['default']>
+  LazyAuthDialog: LazyComponent<typeof import("../../components/AuthDialog.vue")['default']>
   LazyBaseModal: LazyComponent<typeof import("../../components/BaseModal.vue")['default']>
   LazyExerciseForm: LazyComponent<typeof import("../../components/ExerciseForm.vue")['default']>
   LazyImportDialog: LazyComponent<typeof import("../../components/ImportDialog.vue")['default']>

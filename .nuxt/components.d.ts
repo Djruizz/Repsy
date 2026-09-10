@@ -17,6 +17,7 @@ type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {},
 export const AppHeader: typeof import("../components/AppHeader.vue")['default']
 export const AppIcon: typeof import("../components/AppIcon.vue")['default']
 export const AppTabbar: typeof import("../components/AppTabbar.vue")['default']
+export const AuthDialog: typeof import("../components/AuthDialog.vue")['default']
 export const BaseModal: typeof import("../components/BaseModal.vue")['default']
 export const ExerciseForm: typeof import("../components/ExerciseForm.vue")['default']
 export const ImportDialog: typeof import("../components/ImportDialog.vue")['default']
@@ -90,6 +91,7 @@ export const NuxtIsland: typeof import("../node_modules/nuxt/dist/app/components
 export const LazyAppHeader: LazyComponent<typeof import("../components/AppHeader.vue")['default']>
 export const LazyAppIcon: LazyComponent<typeof import("../components/AppIcon.vue")['default']>
 export const LazyAppTabbar: LazyComponent<typeof import("../components/AppTabbar.vue")['default']>
+export const LazyAuthDialog: LazyComponent<typeof import("../components/AuthDialog.vue")['default']>
 export const LazyBaseModal: LazyComponent<typeof import("../components/BaseModal.vue")['default']>
 export const LazyExerciseForm: LazyComponent<typeof import("../components/ExerciseForm.vue")['default']>
 export const LazyImportDialog: LazyComponent<typeof import("../components/ImportDialog.vue")['default']>

@@ -31,6 +31,17 @@ function defaultData(): GymData {
 
 const REQUIRED_DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
+function normalizeSession(s: Partial<RunSession>): RunSession {
+  return {
+    ...s,
+    startedAt: s.startedAt ?? s.date,
+    durationMs: s.durationMs ?? 0,
+    setWeights: s.setWeights ?? {},
+    restCycle: s.restCycle ?? {},
+    restElapsed: s.restElapsed ?? {},
+  } as RunSession
+}
+
 function readFromStorage(): GymData {
   if (typeof localStorage === 'undefined') return defaultData()
   try {
@@ -56,14 +67,7 @@ function readFromStorage(): GymData {
         version: DATA_VERSION,
         days,
         sessions: Array.isArray(parsed.sessions)
-          ? parsed.sessions.map((s) => ({
-              ...s,
-              startedAt: s.startedAt ?? s.date,
-              durationMs: s.durationMs ?? 0,
-              setWeights: s.setWeights ?? {},
-              restCycle: s.restCycle ?? {},
-              restElapsed: s.restElapsed ?? {},
-            }))
+          ? parsed.sessions.map(normalizeSession)
           : []
       }
     }
@@ -86,13 +90,24 @@ function writeToStorage(d: GymData) {
 // ── Shared singleton state (SPA mode: localStorage always available) ──────
 const data = ref<GymData>(readFromStorage())
 let watchInitialized = false
+let touchGuard = false
+let applyingRemote = false
 
 export function useGymData() {
   if (!watchInitialized) {
     watchInitialized = true
     watch(
       data,
-      (d) => writeToStorage(d),
+      (d) => {
+        if (applyingRemote) {
+          applyingRemote = false
+        } else if (!touchGuard) {
+          touchGuard = true
+          d.updatedAt = new Date().toISOString()
+          touchGuard = false
+        }
+        writeToStorage(d)
+      },
       { deep: true, flush: 'sync' }
     )
   }
@@ -270,16 +285,7 @@ export function useGymData() {
         data.value = {
           version: DATA_VERSION,
           days: Array.isArray(parsed.days) ? parsed.days.map(normalizeDay) : defaultData().days,
-        sessions: Array.isArray(parsed.sessions)
-          ? parsed.sessions.map((s) => ({
-              ...s,
-              startedAt: s.startedAt ?? s.date,
-              durationMs: s.durationMs ?? 0,
-              setWeights: s.setWeights ?? {},
-              restCycle: s.restCycle ?? {},
-              restElapsed: s.restElapsed ?? {},
-            }))
-          : []
+          sessions: Array.isArray(parsed.sessions) ? parsed.sessions.map(normalizeSession) : []
         }
       } else {
         const incomingDays = Array.isArray(parsed.days) ? parsed.days.map(normalizeDay) : []
@@ -290,14 +296,7 @@ export function useGymData() {
         data.value.days = REQUIRED_DAYS.map((name) => existingByName.get(name) ?? emptyDay(name))
 
         const incomingSessions = Array.isArray(parsed.sessions)
-          ? parsed.sessions.map((s) => ({
-              ...s,
-              startedAt: s.startedAt ?? s.date,
-              durationMs: s.durationMs ?? 0,
-              setWeights: s.setWeights ?? {},
-              restCycle: s.restCycle ?? {},
-              restElapsed: s.restElapsed ?? {},
-            }))
+          ? parsed.sessions.map(normalizeSession)
           : []
         const existingIds = new Set(data.value.sessions.map((s) => s.id))
         for (const s of incomingSessions) {
@@ -314,6 +313,16 @@ export function useGymData() {
 
   function resetAll() {
     data.value = defaultData()
+  }
+
+  function applyRemote(remote: Partial<GymData>) {
+    applyingRemote = true
+    data.value = {
+      version: DATA_VERSION,
+      updatedAt: remote.updatedAt,
+      days: Array.isArray(remote.days) ? remote.days.map(normalizeDay) : defaultData().days,
+      sessions: Array.isArray(remote.sessions) ? remote.sessions.map(normalizeSession) : []
+    }
   }
 
   return {
@@ -338,6 +347,7 @@ export function useGymData() {
     getAllExercises,
     exportData,
     importData,
-    resetAll
+    resetAll,
+    applyRemote
   }
 }

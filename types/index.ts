@@ -113,6 +113,7 @@ export interface RunSession {
 
 export interface GymData {
   version: number
+  updatedAt?: string
   days: Day[]
   sessions: RunSession[]
 }
