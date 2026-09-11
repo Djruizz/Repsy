@@ -32,13 +32,51 @@ function defaultData(): GymData {
 
 const REQUIRED_DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
-// Descarta sesiones incompletas que no empezaron hoy: evita reanudar
-// sesiones abandonadas con progreso caduco y cronómetro inflado.
-function expireStaleSessions(sessions: RunSession[]): RunSession[] {
+function sessionItemDone(s: RunSession, item: RoutineItem): boolean {
+  if (s.itemStates?.[item.id] === 'done') return true
+  if (item.type === 'rest') return false
+  const setStates = s.setStates ?? {}
+  for (let i = 0; i < item.sets; i++) {
+    const st = setStates[`${item.id}:${i}`]
+    if (st !== 'done' && st !== 'skipped') return false
+  }
+  return true
+}
+
+function sessionComplete(s: RunSession, days: Day[]): boolean {
+  const day = days.find((d) => d.id === s.dayId)
+  if (!day || !day.items.length) return false
+  return day.items.every((item) => sessionItemDone(s, item))
+}
+
+function rescueSessionData(s: RunSession): RunSession {
+  const startedAt = s.startedAt ?? s.date
+  const durationMs = s.lastActiveAt
+    ? Math.max(0, new Date(s.lastActiveAt).getTime() - new Date(startedAt).getTime())
+    : s.durationMs
+  // Cuenta para el día en que se entrenó, no para hoy
+  return { ...s, completed: true, date: startedAt, durationMs }
+}
+
+// Sesiones incompletas que no empezaron hoy: la que tenía toda la rutina
+// hecha se rescata (cuenta para su día real); el resto se descarta para no
+// reanudar sesiones con progreso caduco y cronómetro inflado.
+function resolveStaleSessions(
+  sessions: RunSession[],
+  days: Day[],
+): { sessions: RunSession[]; changed: boolean } {
   const today = todayKey()
-  return sessions.filter(
-    (s) => s.completed || localDayKey(s.startedAt ?? s.date) === today,
-  )
+  const out: RunSession[] = []
+  let changed = false
+  for (const s of sessions) {
+    if (s.completed || localDayKey(s.startedAt ?? s.date) === today) {
+      out.push(s)
+      continue
+    }
+    changed = true
+    if (sessionComplete(s, days)) out.push(rescueSessionData(s))
+  }
+  return { sessions: out, changed }
 }
 
 function normalizeSession(s: Partial<RunSession>): RunSession {
@@ -76,14 +114,14 @@ function readFromStorage(): GymData {
       const storedSessions = Array.isArray(parsed.sessions)
         ? parsed.sessions.map(normalizeSession)
         : []
-      const sessions = expireStaleSessions(storedSessions)
+      const resolved = resolveStaleSessions(storedSessions, days)
       const result: GymData = {
         version: DATA_VERSION,
         days,
-        sessions,
+        sessions: resolved.sessions,
       }
-      if (sessions.length !== storedSessions.length) {
-        // Se purgaron sesiones caducas: persistir de inmediato
+      if (resolved.changed) {
+        // Se rescataron/descartaron sesiones caducas: persistir de inmediato
         writeToStorage(result)
       }
       return result
@@ -211,6 +249,7 @@ export function useGymData() {
       dayId,
       date: new Date().toISOString(),
       startedAt: new Date().toISOString(),
+      lastActiveAt: new Date().toISOString(),
       durationMs: 0,
       completed: false,
       itemStates: {},
@@ -234,6 +273,16 @@ export function useGymData() {
       s.completed = true
       s.date = new Date().toISOString()
     }
+  }
+
+  function isSessionComplete(s: RunSession): boolean {
+    return sessionComplete(s, data.value.days)
+  }
+
+  /** Marca como completada una sesión olvidada, contando para su día real. */
+  function rescueSession(id: string) {
+    const s = data.value.sessions.find((x) => x.id === id)
+    if (s && !s.completed) Object.assign(s, rescueSessionData(s))
   }
 
   function deleteSession(id: string) {
@@ -387,6 +436,8 @@ export function useGymData() {
     startSession,
     updateSession,
     completeSession,
+    isSessionComplete,
+    rescueSession,
     deleteSession,
     getWeightHistory,
     getAllExerciseNames,

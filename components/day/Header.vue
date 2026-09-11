@@ -11,7 +11,7 @@
         <AppIcon name="check" class="w-4 h-4" :stroke-width="3" /> Hecho
       </button>
       <button
-        v-if="hasItems && !isEdit && !alreadyRunToday && isTodayDay"
+        v-if="hasItems && !isEdit && !alreadyRunToday"
         class="btn-primary"
         @click="$emit('run')"
       >
@@ -35,7 +35,6 @@ withDefaults(defineProps<{
   isEdit: boolean
   hasItems: boolean
   alreadyRunToday: boolean
-  isTodayDay: boolean
   hasActiveSession?: boolean
 }>(), { hasActiveSession: false })
 

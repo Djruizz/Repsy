@@ -1,5 +1,5 @@
 <template>
-  <div v-if="day && isTodayDay && canRun" class="space-y-5">
+  <div v-if="day && allowRun" class="space-y-5">
     <RunHeader
       :day-name="day.dayName"
       :routine-name="day.routineName"
@@ -67,7 +67,13 @@
       @add="restCountdown.add"
     />
 
-    <RunCompleteState v-else @finish="finish" />
+    <RunCompleteState
+      v-else
+      :auto-seconds="autoCountdown.seconds.value"
+      :auto-active="autoCountdown.running.value"
+      @finish="finish"
+      @cancel="cancelAutoFinish"
+    />
 
     <RunRoutineProgress
       :items="day.items"
@@ -77,7 +83,7 @@
   </div>
 
   <RunAlreadyDoneState
-    v-else-if="day && isTodayDay && alreadyRunToday && !activeSession"
+    v-else-if="day && alreadyRunToday && !activeSession"
     @back="navigateTo(`/dia/${day.id}`)"
   />
 
@@ -86,6 +92,7 @@
     :today-day-name="todayDayName"
     :day-name="day.dayName"
     @back="navigateTo(`/dia/${day.id}`)"
+    @run-anyway="runAnyway"
   />
 
   <RunNotFoundState v-else />
@@ -108,6 +115,8 @@ const {
   startSession,
   completeSession,
   deleteSession,
+  isSessionComplete,
+  rescueSession,
   sessions,
   getWeightHistory,
 } = useGymData();
@@ -128,13 +137,23 @@ const activeSession = computed(() =>
   day.value ? getActiveSession(day.value.id) : undefined,
 );
 const canRun = computed(() => !alreadyRunToday.value || !!activeSession.value);
+// Se puede correr la rutina de otro día (recuperación) tras confirmar el aviso
+const overrideNotToday = ref(false);
+const allowRun = computed(
+  () => canRun.value && (isTodayDay.value || overrideNotToday.value),
+);
 
 const session = ref<RunSession | null>(null);
 const stopwatch = useStopwatch();
 const countdown = useCountdown();
 const restCountdown = useCountdown();
 const setTimeCountdown = useCountdown();
+const autoCountdown = useCountdown();
 const { playFinishCue } = useSoundCue();
+
+// Auto-finalización: al completar la rutina, cuenta atrás cancelable
+const AUTO_FINISH_SECONDS = 15;
+const autoFinishCancelled = ref(false);
 
 // Inter-set rest state
 const setRestActive = ref(false);
@@ -150,15 +169,22 @@ const setTimeItem = ref<Exercise | null>(null);
 const currentWeight = ref(0);
 const lastWeights = ref<Record<string, number>>({});
 
-onMounted(() => {
-  if (!isTodayDay.value || !canRun.value) return;
-  if (day.value) {
-    let existing = getActiveSession(day.value.id);
-    // Sesión abandonada en un día anterior: descartarla y empezar de cero
-    if (existing && localDayKey(existing.startedAt) !== todayKey.value) {
+function initSession() {
+  if (!day.value) return;
+  let existing = getActiveSession(day.value.id);
+  // Sesión abandonada en un día anterior: si estaba completa se rescata
+  // (cuenta para el día que se entrenó); si no, se descarta.
+  if (existing && localDayKey(existing.startedAt) !== todayKey.value) {
+    if (isSessionComplete(existing)) {
+      rescueSession(existing.id);
+    } else {
       deleteSession(existing.id);
-      existing = undefined;
     }
+    existing = undefined;
+  }
+  // Rutina vacía: no crear sesión (una sesión de 0 ejercicios marcaría
+  // el día como completado sin haber entrenado)
+  if (day.value.items.length > 0) {
     session.value = existing ?? startSession(day.value.id);
   }
   seedCurrentRest();
@@ -167,13 +193,24 @@ onMounted(() => {
     stopwatch.seed(Math.max(0, elapsed));
     stopwatch.resume();
   }
+}
+
+onMounted(() => {
+  if (!allowRun.value) return;
+  initSession();
 });
+
+function runAnyway() {
+  overrideNotToday.value = true;
+  initSession();
+}
 
 onUnmounted(() => {
   flush();
   countdown.stop();
   restCountdown.stop();
   setTimeCountdown.stop();
+  autoCountdown.stop();
   stopwatch.stop();
 });
 
@@ -181,6 +218,12 @@ const items = computed<RoutineItem[]>(() => day.value?.items ?? []);
 
 function setKey(id: string, i: number) {
   return `${id}:${i}`;
+}
+
+// Sella la última actividad: permite calcular la duración real de sesiones
+// auto-finalizadas o rescatadas al día siguiente.
+function touch() {
+  if (session.value) session.value.lastActiveAt = new Date().toISOString();
 }
 
 function isExerciseComplete(item: Exercise): boolean {
@@ -221,6 +264,7 @@ function cycleSet(i: number) {
   const item = currentExercise.value;
   if (!item) return;
   if (setRestActive.value || setTimeActive.value) return;
+  touch();
   const k = setKey(item.id, i);
   const cur = session.value.setStates[k] ?? "pending";
 
@@ -314,6 +358,7 @@ function completeSetWithWeight(i: number) {
   if (!session.value) return;
   const item = currentExercise.value;
   if (!item) return;
+  touch();
   const k = setKey(item.id, i);
   session.value.setStates[k] = "done";
   if (currentWeight.value > 0) {
@@ -331,6 +376,7 @@ function completeTimeSet(i: number) {
   if (!session.value) return;
   const item = currentExercise.value;
   if (!item) return;
+  touch();
   const k = setKey(item.id, i);
   session.value.setStates[k] = "done";
   if (currentWeight.value > 0) {
@@ -360,6 +406,7 @@ function skipExercise() {
   if (!session.value) return;
   const item = currentExercise.value;
   if (!item) return;
+  touch();
   endSetRest();
   endSetTime();
   for (let i = 0; i < item.sets; i++) {
@@ -394,12 +441,14 @@ function seedCurrentRest() {
 function beginRest() {
   const item = currentRest.value;
   if (!item) return;
+  touch();
   restCountdown.start(item.duration);
 }
 
 function pauseRest() {
   const item = currentRest.value;
   if (!item) return;
+  touch();
   restCountdown.pause();
   saveRestRemaining(item);
 }
@@ -412,6 +461,7 @@ function skipRest() {
   if (!session.value) return;
   const item = currentRest.value;
   if (!item) return;
+  touch();
   restCountdown.stop();
   session.value.itemStates[item.id] = "done";
 }
@@ -426,6 +476,7 @@ watch(
     if (item?.type !== "rest") return;
     if (!session.value || session.value.itemStates[item.id] === "done") return;
     playFinishCue();
+    touch();
     session.value.itemStates[item.id] = "done";
   },
 );
@@ -443,12 +494,47 @@ watch(currentIdx, () => {
   endSetTime();
 });
 
+// Auto-finalización: rutina completa → cuenta atrás cancelable. Si el
+// usuario sale antes (o cancela), la sesión se rescata al día siguiente.
+watch(
+  currentIdx,
+  (idx) => {
+    if (idx >= 0) {
+      autoFinishCancelled.value = false;
+      autoCountdown.stop();
+      return;
+    }
+    if (
+      session.value &&
+      !session.value.completed &&
+      items.value.length > 0 &&
+      !autoFinishCancelled.value
+    ) {
+      autoCountdown.start(AUTO_FINISH_SECONDS);
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => autoCountdown.finished.value,
+  (done) => {
+    if (done) finish();
+  },
+);
+
+function cancelAutoFinish() {
+  autoFinishCancelled.value = true;
+  autoCountdown.stop();
+}
+
 function finish() {
   if (!session.value) return;
   flush();
   countdown.stop();
   restCountdown.stop();
   setTimeCountdown.stop();
+  autoCountdown.stop();
   if (session.value.startedAt) {
     session.value.durationMs =
       Date.now() - new Date(session.value.startedAt).getTime();
@@ -462,10 +548,23 @@ function finish() {
 }
 
 function confirmLeave() {
+  // Rutina completa y cuenta no cancelada: finalizar en vez de dejarla
+  // activa (así el entreno cuenta aunque el usuario se marche ya)
+  if (
+    session.value &&
+    !session.value.completed &&
+    items.value.length > 0 &&
+    !autoFinishCancelled.value &&
+    currentIdx.value === -1
+  ) {
+    finish();
+    return;
+  }
   flush();
   countdown.stop();
   restCountdown.stop();
   setTimeCountdown.stop();
+  autoCountdown.stop();
   stopwatch.stop();
   endSetRest();
   endSetTime();

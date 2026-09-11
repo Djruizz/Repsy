@@ -102,6 +102,7 @@ export interface RunSession {
   dayId: string
   date: string
   startedAt: string
+  lastActiveAt?: string
   durationMs: number
   completed: boolean
   itemStates: Record<string, ItemRunState>

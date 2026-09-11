@@ -4,7 +4,6 @@
       :is-edit="isEdit"
       :has-items="day.items.length > 0"
       :already-run-today="alreadyRunToday"
-      :is-today-day="isTodayDay"
       :has-active-session="!!activeSession"
       @back="navigateTo('/')"
       @edit="enterEdit"
@@ -55,7 +54,6 @@
 <script setup lang="ts">
 import { type Exercise, type Rest, type RoutineItem } from "~/types";
 import {
-  weekdayName,
   localDayKey,
   todayKey as todayLocalKey,
 } from "~/composables/useCalendar";
@@ -88,9 +86,6 @@ const alreadyRunToday = computed(() =>
 );
 const activeSession = computed(() =>
   day.value ? getActiveSession(day.value.id) : undefined,
-);
-const isTodayDay = computed(
-  () => day.value?.dayName === weekdayName(new Date()),
 );
 
 function enterEdit() {
