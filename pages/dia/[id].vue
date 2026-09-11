@@ -5,7 +5,8 @@
       :has-items="day.items.length > 0"
       :already-run-today="alreadyRunToday"
       :has-active-session="!!activeSession"
-      @back="navigateTo('/')"
+      :back-label="isFreeRoutine ? 'Rutinas' : 'Semana'"
+      @back="goBack"
       @edit="enterEdit"
       @done="exitEdit"
       @run="navigateTo(`/correr/${day.id}`)"
@@ -74,6 +75,11 @@ const {
 
 const day = computed(() => getDay(String(route.params.id)));
 const isEdit = computed(() => route.query.edit !== undefined);
+const isFreeRoutine = computed(() => day.value?.dayName === "");
+
+function goBack() {
+  navigateTo(isFreeRoutine.value ? "/rutinas" : "/");
+}
 
 const todayKey = computed(() => todayLocalKey());
 const alreadyRunToday = computed(() =>

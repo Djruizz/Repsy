@@ -116,6 +116,8 @@ export interface GymData {
   version: number
   updatedAt?: string
   days: Day[]
+  /** Rutinas libres: sin día fijo, corribles en cualquier momento (dayName: ''). */
+  routines: Day[]
   sessions: RunSession[]
 }
 

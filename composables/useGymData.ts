@@ -26,6 +26,7 @@ function defaultData(): GymData {
   return {
     version: DATA_VERSION,
     days: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(emptyDay),
+    routines: [],
     sessions: []
   }
 }
@@ -43,8 +44,8 @@ function sessionItemDone(s: RunSession, item: RoutineItem): boolean {
   return true
 }
 
-function sessionComplete(s: RunSession, days: Day[]): boolean {
-  const day = days.find((d) => d.id === s.dayId)
+function sessionComplete(s: RunSession, entries: Day[]): boolean {
+  const day = entries.find((d) => d.id === s.dayId)
   if (!day || !day.items.length) return false
   return day.items.every((item) => sessionItemDone(s, item))
 }
@@ -63,7 +64,7 @@ function rescueSessionData(s: RunSession): RunSession {
 // reanudar sesiones con progreso caduco y cronómetro inflado.
 function resolveStaleSessions(
   sessions: RunSession[],
-  days: Day[],
+  entries: Day[],
 ): { sessions: RunSession[]; changed: boolean } {
   const today = todayKey()
   const out: RunSession[] = []
@@ -74,7 +75,7 @@ function resolveStaleSessions(
       continue
     }
     changed = true
-    if (sessionComplete(s, days)) out.push(rescueSessionData(s))
+    if (sessionComplete(s, entries)) out.push(rescueSessionData(s))
   }
   return { sessions: out, changed }
 }
@@ -88,6 +89,25 @@ function normalizeSession(s: Partial<RunSession>): RunSession {
     restCycle: s.restCycle ?? {},
     restElapsed: s.restElapsed ?? {},
   } as RunSession
+}
+
+function normalizeDay(d: Partial<Day>): Day {
+  return {
+    ...emptyDay(''),
+    ...d,
+    items: Array.isArray(d.items)
+      ? d.items.map((it) =>
+          it.type === 'exercise'
+            ? { ...(it as Exercise), score_by: (it as Exercise).score_by ?? 'reps' as const }
+            : it,
+        )
+      : [],
+  }
+}
+
+/** Rutina libre: día sin weekday (dayName: ''), corrible en cualquier momento. */
+function normalizeRoutine(d: Partial<Day>): Day {
+  return { ...normalizeDay(d), dayName: '' }
 }
 
 function readFromStorage(): GymData {
@@ -111,13 +131,17 @@ function readFromStorage(): GymData {
         : []
       const byName = new Map(storedDays.map((d) => [d.dayName, d]))
       const days = REQUIRED_DAYS.map((name) => byName.get(name) ?? emptyDay(name))
+      const routines = Array.isArray(parsed.routines)
+        ? parsed.routines.map(normalizeRoutine)
+        : []
       const storedSessions = Array.isArray(parsed.sessions)
         ? parsed.sessions.map(normalizeSession)
         : []
-      const resolved = resolveStaleSessions(storedSessions, days)
+      const resolved = resolveStaleSessions(storedSessions, [...days, ...routines])
       const result: GymData = {
         version: DATA_VERSION,
         days,
+        routines,
         sessions: resolved.sessions,
       }
       if (resolved.changed) {
@@ -171,10 +195,15 @@ export function useGymData() {
   }
 
   const days = computed(() => data.value.days)
+  const routines = computed(() => data.value.routines)
   const sessions = computed(() => data.value.sessions)
 
+  /** Busca por id en los 7 días y en las rutinas libres. */
   function getDay(id: string): Day | undefined {
-    return data.value.days.find((d) => d.id === id)
+    return (
+      data.value.days.find((d) => d.id === id) ??
+      data.value.routines.find((d) => d.id === id)
+    )
   }
 
   function updateDay(id: string, patch: Partial<Day>) {
@@ -237,6 +266,19 @@ export function useGymData() {
     }
   }
 
+  function addRoutine(): Day {
+    const routine = emptyDay('')
+    data.value.routines.push(routine)
+    return routine
+  }
+
+  function removeRoutine(id: string) {
+    data.value.routines = data.value.routines.filter((r) => r.id !== id)
+    // Sus sesiones quedarían huérfanas (sin rutina no hay pesos ni nombre):
+    // borrarlas también.
+    data.value.sessions = data.value.sessions.filter((s) => s.dayId !== id)
+  }
+
   function getActiveSession(dayId: string): RunSession | undefined {
     return data.value.sessions.find((s) => s.dayId === dayId && !s.completed)
   }
@@ -276,7 +318,7 @@ export function useGymData() {
   }
 
   function isSessionComplete(s: RunSession): boolean {
-    return sessionComplete(s, data.value.days)
+    return sessionComplete(s, [...data.value.days, ...data.value.routines])
   }
 
   /** Marca como completada una sesión olvidada, contando para su día real. */
@@ -293,7 +335,7 @@ export function useGymData() {
     const history: { date: string; weight: number; setIdx: number }[] = []
     for (const s of data.value.sessions) {
       if (!s.completed) continue
-      const day = data.value.days.find((d) => d.id === s.dayId)
+      const day = getDay(s.dayId)
       if (!day) continue
       for (const item of day.items) {
         if (item.type !== 'exercise' || item.name !== exerciseName) continue
@@ -308,7 +350,7 @@ export function useGymData() {
 
   function getAllExerciseNames(): string[] {
     const names = new Set<string>()
-    for (const d of data.value.days) {
+    for (const d of [...data.value.days, ...data.value.routines]) {
       for (const item of d.items) {
         if (item.type === 'exercise' && item.name.trim()) names.add(item.name)
       }
@@ -318,7 +360,7 @@ export function useGymData() {
 
   function getAllExercises(): { name: string; muscle_group: MuscleGroup }[] {
     const byName = new Map<string, { name: string; muscle_group: MuscleGroup }>()
-    for (const d of data.value.days) {
+    for (const d of [...data.value.days, ...data.value.routines]) {
       for (const item of d.items) {
         if (item.type !== 'exercise') continue
         const name = item.name.trim()
@@ -331,20 +373,6 @@ export function useGymData() {
 
   function exportData(): string {
     return JSON.stringify(data.value, null, 2)
-  }
-
-  function normalizeDay(d: Partial<Day>): Day {
-    return {
-      ...emptyDay(''),
-      ...d,
-      items: Array.isArray(d.items)
-        ? d.items.map((it) =>
-            it.type === 'exercise'
-              ? { ...(it as Exercise), score_by: (it as Exercise).score_by ?? 'reps' as const }
-              : it,
-          )
-        : [],
-    }
   }
 
   function importData(
@@ -368,6 +396,9 @@ export function useGymData() {
         data.value = {
           version: DATA_VERSION,
           days: REQUIRED_DAYS.map((name) => byName.get(name) ?? emptyDay(name)),
+          routines: Array.isArray(parsed.routines)
+            ? parsed.routines.map(normalizeRoutine)
+            : [],
           sessions: Array.isArray(parsed.sessions)
             ? parsed.sessions.map(normalizeSession)
             : [],
@@ -399,6 +430,15 @@ export function useGymData() {
           if (mappedDayId) s.dayId = mappedDayId
           data.value.sessions.push(s)
         }
+
+        // Rutinas libres entrantes: fusionar por id
+        const incomingRoutines = Array.isArray(parsed.routines)
+          ? parsed.routines.map(normalizeRoutine)
+          : []
+        const routineIds = new Set(data.value.routines.map((r) => r.id))
+        for (const r of incomingRoutines) {
+          if (!routineIds.has(r.id)) data.value.routines.push(r)
+        }
       }
       return { ok: true, ignoredDays }
     } catch {
@@ -416,6 +456,9 @@ export function useGymData() {
       version: DATA_VERSION,
       updatedAt: remote.updatedAt,
       days: Array.isArray(remote.days) ? remote.days.map(normalizeDay) : defaultData().days,
+      routines: Array.isArray(remote.routines)
+        ? remote.routines.map(normalizeRoutine)
+        : [],
       sessions: Array.isArray(remote.sessions) ? remote.sessions.map(normalizeSession) : []
     }
   }
@@ -423,6 +466,7 @@ export function useGymData() {
   return {
     data,
     days,
+    routines,
     sessions,
     getDay,
     updateDay,
@@ -432,6 +476,8 @@ export function useGymData() {
     moveItem,
     newExercise,
     newRest,
+    addRoutine,
+    removeRoutine,
     getActiveSession,
     startSession,
     updateSession,

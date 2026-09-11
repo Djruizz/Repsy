@@ -36,7 +36,7 @@ import {
 } from '~/composables/useCalendar'
 import type { RunSession } from '~/types'
 
-const { sessions, days } = useGymData()
+const { sessions, days, routines } = useGymData()
 
 const completed = computed(() => sessions.value.filter((s) => s.completed))
 
@@ -107,7 +107,9 @@ function selectDay(cell: MonthCell) {
 }
 
 function resolveDayName(dayId: string): string {
-  const d = days.value.find((x) => x.id === dayId)
+  const d =
+    days.value.find((x) => x.id === dayId) ??
+    routines.value.find((x) => x.id === dayId)
   return d?.routineName || d?.dayName || 'Sesión'
 }
 

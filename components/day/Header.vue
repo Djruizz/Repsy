@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center justify-between">
     <button class="px-3 py-2 text-xs btn-ghost" @click="$emit('back')">
-      <AppIcon name="arrow-left" class="w-4 h-4" /> Semana
+      <AppIcon name="arrow-left" class="w-4 h-4" /> {{ backLabel }}
     </button>
     <div class="flex items-center gap-2">
       <button v-if="!isEdit" class="px-3 py-2 text-xs btn-ghost" @click="$emit('edit')">
@@ -36,7 +36,8 @@ withDefaults(defineProps<{
   hasItems: boolean
   alreadyRunToday: boolean
   hasActiveSession?: boolean
-}>(), { hasActiveSession: false })
+  backLabel?: string
+}>(), { hasActiveSession: false, backLabel: 'Semana' })
 
 defineEmits<{ back: []; edit: []; done: []; run: [] }>()
 </script>

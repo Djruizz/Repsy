@@ -1,8 +1,8 @@
 <template>
   <section class="p-5 surface">
     <div class="flex items-center gap-3">
-      <span class="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">{{ day.dayName }}</span>
-      <label class="flex items-center gap-2 ml-auto text-xs cursor-pointer text-slate-400">
+      <span class="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">{{ day.dayName || 'Rutina libre' }}</span>
+      <label v-if="day.dayName" class="flex items-center gap-2 ml-auto text-xs cursor-pointer text-slate-400">
         <span>Día activo</span>
         <span
           class="relative h-5 transition rounded-full w-9"

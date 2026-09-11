@@ -1,7 +1,7 @@
 <template>
   <div v-if="day && allowRun" class="space-y-5">
     <RunHeader
-      :day-name="day.dayName"
+      :day-name="day.dayName || 'Rutina libre'"
       :routine-name="day.routineName"
       :seconds="stopwatch.seconds.value"
       @leave="confirmLeave"
@@ -88,7 +88,7 @@
   />
 
   <RunNotTodayState
-    v-else-if="day && !isTodayDay"
+    v-else-if="day && !isTodayDay && !isFreeRoutine"
     :today-day-name="todayDayName"
     :day-name="day.dayName"
     @back="navigateTo(`/dia/${day.id}`)"
@@ -136,11 +136,15 @@ const alreadyRunToday = computed(() =>
 const activeSession = computed(() =>
   day.value ? getActiveSession(day.value.id) : undefined,
 );
+// Rutina libre (sin weekday): corrible cualquier día sin aviso
+const isFreeRoutine = computed(() => day.value?.dayName === "");
 const canRun = computed(() => !alreadyRunToday.value || !!activeSession.value);
 // Se puede correr la rutina de otro día (recuperación) tras confirmar el aviso
 const overrideNotToday = ref(false);
 const allowRun = computed(
-  () => canRun.value && (isTodayDay.value || overrideNotToday.value),
+  () =>
+    canRun.value &&
+    (isTodayDay.value || overrideNotToday.value || isFreeRoutine.value),
 );
 
 const session = ref<RunSession | null>(null);
