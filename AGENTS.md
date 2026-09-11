@@ -72,3 +72,7 @@ Components live in subdirectories of `components/`; Nuxt prepends the directory 
 - Week starts **Monday**, not Sunday — `startOfWeek`, `weekdayName`, `shortWeekday`, and the streak logic all assume this.
 - Shared cross-component types go in `types/index.ts` (e.g. `WeekCell` is used by `pages/index.vue` and `components/week/*`).
 - Prefer passing data via props and communicating via emits; keep business logic in pages/composables, not in presentational components.
+
+## Roadmap
+
+- **Fase 2 — multiple routines per day**: full plan, closed decisions and open questions live in `docs/PLAN-FASE-2.md` (Spanish). Read it before touching the data model or routes — route naming (`/dia/{slug}` + `/rutina/{id}`) is already decided there.
