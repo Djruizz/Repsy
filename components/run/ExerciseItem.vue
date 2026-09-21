@@ -5,6 +5,19 @@
       <span class="chip bg-white/5 text-slate-300">Ejercicio</span>
     </div>
 
+    <!-- MODO REVISIÓN: banner para volver al ítem actual -->
+    <div
+      v-if="isPast"
+      class="flex items-center justify-between gap-3 p-2.5 mt-3 rounded-xl border border-sky-400/25 bg-sky-400/10"
+    >
+      <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-300">
+        <AppIcon name="edit" class="w-3.5 h-3.5" /> Ejercicio anterior
+      </span>
+      <button class="px-3 py-1.5 text-xs btn-ghost" @click="$emit('backToCurrent')">
+        Volver al actual <AppIcon name="arrow-right" class="w-3.5 h-3.5" />
+      </button>
+    </div>
+
     <div class="mt-4 animate-fade-up">
       <div class="flex flex-wrap items-center gap-2">
         <h2 class="text-xl font-bold text-white">{{ item.name }}</h2>
@@ -105,7 +118,7 @@
       </div>
 
       <!-- Show recorded weights for completed sets -->
-      <div v-if="hasRecordedWeights" class="flex flex-wrap gap-2 mt-3 text-xs">
+      <div v-if="hasRecordedWeights && !isPast" class="flex flex-wrap gap-2 mt-3 text-xs">
         <span
           v-for="i in item.sets"
           :key="i"
@@ -116,7 +129,41 @@
         </span>
       </div>
 
-      <div class="flex gap-2 mt-5">
+      <!-- MODO REVISIÓN: editar peso de las series completadas -->
+      <div
+        v-if="isPast && hasDoneSets"
+        class="p-3 mt-4 border rounded-xl border-sky-400/20 bg-sky-400/5"
+      >
+        <span class="text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+          Pesos de las series
+        </span>
+        <div class="flex flex-wrap gap-2 mt-2.5">
+          <div
+            v-for="i in item.sets"
+            :key="i"
+            v-show="setState(i - 1) === 'done'"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 border rounded-lg border-white/10 bg-ink-900/60"
+          >
+            <span class="font-mono text-xs text-slate-500">S{{ i }}</span>
+            <input
+              :value="getSetWeight(i - 1) ?? 0"
+              type="number"
+              inputmode="decimal"
+              min="0"
+              step="0.5"
+              class="w-16 text-sm font-bold text-white bg-transparent outline-none placeholder:text-slate-600"
+              placeholder="0"
+              @change="$emit('updateSetWeight', i - 1, parseFloat(($event.target as HTMLInputElement).value) || 0)"
+            />
+            <span class="text-[10px] font-medium text-slate-500">kg</span>
+          </div>
+        </div>
+        <p class="mt-2 text-[10px] text-slate-500">
+          Toca una serie arriba para cambiar su estado (completada / saltada)
+        </p>
+      </div>
+
+      <div v-if="!isPast" class="flex gap-2 mt-5">
         <button class="flex-1 btn-ghost" @click="$emit('skipExercise')">
           <AppIcon name="skip" class="w-4 h-4" /> Saltar ejercicio
         </button>
@@ -129,15 +176,19 @@
 import { formatTime, formatDuration } from '~/composables/useTimer'
 import type { Exercise, RunSession, SetState } from '~/types'
 
-const props = defineProps<{
-  item: Exercise
-  index: number
-  total: number
-  session: RunSession | null
-  setRestActive: boolean
-  setTime: { active: boolean; setIdx: number; seconds: number; progress: number; running: boolean; finished: boolean }
-  currentWeight: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    item: Exercise
+    index: number
+    total: number
+    session: RunSession | null
+    setRestActive: boolean
+    setTime: { active: boolean; setIdx: number; seconds: number; progress: number; running: boolean; finished: boolean }
+    currentWeight: number
+    isPast?: boolean
+  }>(),
+  { isPast: false },
+)
 
 defineEmits<{
   cycleSet: [number]
@@ -148,6 +199,8 @@ defineEmits<{
   pauseSetTime: []
   resumeSetTime: []
   'update:currentWeight': [number]
+  updateSetWeight: [number, number]
+  backToCurrent: []
 }>()
 
 function setKey(i: number): string {
@@ -191,6 +244,13 @@ function getSetWeight(i: number): number | null {
 const hasRecordedWeights = computed(() => {
   for (let i = 0; i < props.item.sets; i++) {
     if (getSetWeight(i) != null) return true
+  }
+  return false
+})
+
+const hasDoneSets = computed(() => {
+  for (let i = 0; i < props.item.sets; i++) {
+    if (setState(i) === 'done') return true
   }
   return false
 })

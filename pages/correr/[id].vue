@@ -41,6 +41,7 @@
         finished: setTimeCountdown.finished.value,
       }"
       v-model:current-weight="currentWeight"
+      :is-past="isPastView"
       @cycle-set="cycleSet"
       @complete-set-with-weight="completeSetWithWeight"
       @start-set-time="startSetTime"
@@ -48,6 +49,8 @@
       @skip-exercise="skipExercise"
       @pause-set-time="setTimeCountdown.pause()"
       @resume-set-time="setTimeCountdown.resume()"
+      @update-set-weight="setSetWeight"
+      @back-to-current="exitReview"
     />
 
     <RunRestItem
@@ -79,6 +82,8 @@
       :items="day.items"
       :current-idx="currentIdx"
       :session="session"
+      :view-idx="viewIdx"
+      @select="selectPastItem"
     />
   </div>
 
@@ -247,8 +252,14 @@ function isItemDone(item: RoutineItem): boolean {
 }
 
 const currentIdx = computed(() => items.value.findIndex((i) => !isItemDone(i)));
+// Revisión: override manual para volver a ejercicios anteriores completados
+const viewIdx = ref<number | null>(null);
+const displayIdx = computed(() => viewIdx.value ?? currentIdx.value);
 const current = computed(() =>
-  currentIdx.value >= 0 ? items.value[currentIdx.value] : null,
+  displayIdx.value >= 0 ? items.value[displayIdx.value] : null,
+);
+const isPastView = computed(
+  () => viewIdx.value != null && viewIdx.value !== currentIdx.value,
 );
 const currentExercise = computed(() =>
   current.value?.type === "exercise" ? current.value : undefined,
@@ -421,6 +432,44 @@ function skipExercise() {
   session.value.itemStates[item.id] = "done";
 }
 
+// ── Revisión de ejercicios anteriores ─────────────────────────────────
+function selectPastItem(idx: number) {
+  const item = items.value[idx];
+  if (!item || item.type !== "exercise") return;
+  if (idx === viewIdx.value) {
+    exitReview();
+    return;
+  }
+  if (idx === currentIdx.value || !isItemDone(item)) return;
+  // Guardar el descanso en curso antes de revisar otro ejercicio
+  const cur = current.value;
+  if (
+    cur?.type === "rest" &&
+    (restCountdown.running.value || restCountdown.paused.value)
+  ) {
+    saveRestRemaining(cur);
+  }
+  viewIdx.value = idx;
+}
+
+function exitReview() {
+  viewIdx.value = null;
+}
+
+function setSetWeight(idx: number, weight: number) {
+  if (!session.value) return;
+  const item = currentExercise.value;
+  if (!item || !isPastView.value) return;
+  touch();
+  const k = setKey(item.id, idx);
+  if (weight > 0) {
+    session.value.setWeights[k] = weight;
+    lastWeights.value[item.name] = weight;
+  } else {
+    delete session.value.setWeights[k];
+  }
+}
+
 function saveRestRemaining(item: Rest) {
   if (!session.value) return;
   session.value.restElapsed[item.id] = restCountdown.seconds.value;
@@ -492,16 +541,24 @@ function flush() {
   }
 }
 
-watch(currentIdx, () => {
+watch(displayIdx, () => {
   seedCurrentRest();
   endSetRest();
   endSetTime();
 });
 
+// Si el avance real alcanza al ítem revisado (serie des-marcada), la
+// revisión termina: ese ítem vuelve a ser el actual.
+watch(currentIdx, () => {
+  viewIdx.value = null;
+});
+
 // Auto-finalización: rutina completa → cuenta atrás cancelable. Si el
 // usuario sale antes (o cancela), la sesión se rescata al día siguiente.
+// En revisión (displayIdx >= 0) la cuenta se detiene y al volver al final
+// arranca de nuevo.
 watch(
-  currentIdx,
+  displayIdx,
   (idx) => {
     if (idx >= 0) {
       autoFinishCancelled.value = false;
