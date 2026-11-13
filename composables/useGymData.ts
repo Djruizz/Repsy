@@ -56,7 +56,7 @@ function rescueSessionData(s: RunSession): RunSession {
     ? Math.max(0, new Date(s.lastActiveAt).getTime() - new Date(startedAt).getTime())
     : s.durationMs
   // Cuenta para el día en que se entrenó, no para hoy
-  return { ...s, completed: true, date: startedAt, durationMs }
+  return { ...s, completed: true, date: startedAt, durationMs, activeTimer: null }
 }
 
 // Sesiones incompletas que no empezaron hoy: la que tenía toda la rutina
@@ -88,6 +88,7 @@ function normalizeSession(s: Partial<RunSession>): RunSession {
     setWeights: s.setWeights ?? {},
     restCycle: s.restCycle ?? {},
     restElapsed: s.restElapsed ?? {},
+    activeTimer: s.activeTimer ?? null,
   } as RunSession
 }
 
@@ -314,6 +315,7 @@ export function useGymData() {
     if (s) {
       s.completed = true
       s.date = new Date().toISOString()
+      s.activeTimer = null
     }
   }
 

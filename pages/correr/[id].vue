@@ -19,8 +19,8 @@
         :progress="countdown.progress.value"
         :running="countdown.running.value"
         :finished="countdown.finished.value"
-        @pause="countdown.pause()"
-        @resume="countdown.resume()"
+        @pause="pauseSetRest"
+        @resume="resumeSetRest"
         @end="endSetRest"
       />
     </Transition>
@@ -47,8 +47,8 @@
       @start-set-time="startSetTime"
       @complete-time-set="completeTimeSet"
       @skip-exercise="skipExercise"
-      @pause-set-time="setTimeCountdown.pause()"
-      @resume-set-time="setTimeCountdown.resume()"
+      @pause-set-time="pauseSetTime"
+      @resume-set-time="resumeSetTime"
       @update-set-weight="setSetWeight"
       @back-to-current="exitReview"
     />
@@ -67,7 +67,7 @@
       @pause="pauseRest"
       @resume="resumeRest"
       @skip="skipRest"
-      @add="restCountdown.add"
+      @add="addRestTime"
     />
 
     <RunCompleteState
@@ -104,9 +104,10 @@
 </template>
 
 <script setup lang="ts">
-import type { Exercise, Rest, RoutineItem, RunSession } from "~/types";
+import type { ActiveTimerKind, Exercise, Rest, RoutineItem, RunSession } from "~/types";
 import { useStopwatch, useCountdown } from "~/composables/useTimer";
 import { useSoundCue } from "~/composables/useSoundCue";
+import { useTimerNotifications } from "~/composables/useTimerNotifications";
 import {
   weekdayName,
   localDayKey,
@@ -158,7 +159,17 @@ const countdown = useCountdown();
 const restCountdown = useCountdown();
 const setTimeCountdown = useCountdown();
 const autoCountdown = useCountdown();
-const { playFinishCue } = useSoundCue();
+const { playFinishCue, unlockAudio } = useSoundCue();
+const {
+  notifyTimerFinished,
+  clearProgressNotification,
+  startLockScreenSession,
+  updateLockScreenMetadata,
+  stopLockScreenSession,
+  acquireWakeLock,
+  releaseWakeLock,
+} = useTimerNotifications();
+const sessionReady = ref(false);
 
 // Auto-finalización: al completar la rutina, cuenta atrás cancelable
 const AUTO_FINISH_SECONDS = 15;
@@ -196,15 +207,32 @@ function initSession() {
   if (day.value.items.length > 0) {
     session.value = existing ?? startSession(day.value.id);
   }
-  seedCurrentRest();
+  const restored = restoreActiveTimer();
+  if (!restored) seedCurrentRest();
   if (session.value?.startedAt) {
     const elapsed = Date.now() - new Date(session.value.startedAt).getTime();
     stopwatch.seed(Math.max(0, elapsed));
     stopwatch.resume();
   }
+  void acquireWakeLock();
+  nextTick(() => {
+    sessionReady.value = true;
+  });
+}
+
+function onVisibilityChange() {
+  if (typeof document === "undefined") return;
+  if (document.visibilityState === "visible") {
+    void clearProgressNotification();
+  } else if (activeLockScreenInfo.value) {
+    updateLockScreenMetadata(activeLockScreenInfo.value);
+  }
 }
 
 onMounted(() => {
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", onVisibilityChange);
+  }
   if (!allowRun.value) return;
   initSession();
 });
@@ -215,12 +243,17 @@ function runAnyway() {
 }
 
 onUnmounted(() => {
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+  }
   flush();
   countdown.stop();
   restCountdown.stop();
   setTimeCountdown.stop();
   autoCountdown.stop();
   stopwatch.stop();
+  stopLockScreenSession();
+  void releaseWakeLock();
 });
 
 const items = computed<RoutineItem[]>(() => day.value?.items ?? []);
@@ -300,21 +333,221 @@ function cycleSet(i: number) {
   }
 }
 
+function syncActiveTimer(
+  kind: ActiveTimerKind,
+  itemId: string,
+  cd: ReturnType<typeof useCountdown>,
+  setIdx?: number,
+) {
+  if (!session.value) return;
+  if (cd.running.value && cd.endAt.value != null) {
+    session.value.activeTimer = {
+      kind,
+      itemId,
+      ...(setIdx != null ? { setIdx } : {}),
+      targetMs: cd.targetMs.value,
+      endAt: cd.endAt.value,
+    };
+  } else if (cd.paused.value) {
+    session.value.activeTimer = {
+      kind,
+      itemId,
+      ...(setIdx != null ? { setIdx } : {}),
+      targetMs: cd.targetMs.value,
+      pausedRemainingMs: cd.remainingMs.value,
+    };
+  } else if (session.value.activeTimer?.kind === kind) {
+    session.value.activeTimer = null;
+  }
+}
+
+function clearActiveTimer(kind?: ActiveTimerKind) {
+  if (!session.value?.activeTimer) return;
+  if (!kind || session.value.activeTimer.kind === kind) {
+    session.value.activeTimer = null;
+  }
+}
+
+function bindSetRestLockScreen() {
+  startLockScreenSession({
+    onPause: pauseSetRest,
+    onResume: resumeSetRest,
+    onSkip: endSetRest,
+  });
+}
+
+function bindSetTimeLockScreen() {
+  startLockScreenSession({
+    onPause: pauseSetTime,
+    onResume: resumeSetTime,
+    onSkip: () => {
+      if (setTimeSetIdx.value >= 0) completeTimeSet(setTimeSetIdx.value);
+    },
+  });
+}
+
+function bindRestLockScreen() {
+  startLockScreenSession({
+    onPause: pauseRest,
+    onResume: resumeRest,
+    onSkip: skipRest,
+  });
+}
+
+function restoreActiveTimer(): boolean {
+  const at = session.value?.activeTimer;
+  if (!session.value || !at || !current.value || current.value.id !== at.itemId) {
+    clearActiveTimer();
+    return false;
+  }
+  if (at.kind === "rest-item" && current.value.type === "rest") {
+    if (at.endAt != null) {
+      if (Date.now() >= at.endAt) {
+        session.value.itemStates[at.itemId] = "done";
+        delete session.value.restElapsed[at.itemId];
+        delete session.value.restCycle[at.itemId];
+        session.value.activeTimer = null;
+        return true;
+      }
+      restCountdown.restoreFromWallClock(at.endAt, at.targetMs);
+      bindRestLockScreen();
+      return true;
+    }
+    if (at.pausedRemainingMs != null) {
+      restCountdown.seedMs(at.pausedRemainingMs, at.targetMs);
+      return true;
+    }
+  }
+  if (at.kind === "set-rest" && current.value.type === "exercise" && at.setIdx != null) {
+    setRestActive.value = true;
+    setRestSetIdx.value = at.setIdx;
+    setRestItem.value = current.value;
+    if (at.endAt != null) {
+      countdown.restoreFromWallClock(at.endAt, at.targetMs);
+      if (countdown.finished.value) {
+        session.value.activeTimer = null;
+      } else {
+        bindSetRestLockScreen();
+      }
+      return true;
+    }
+    if (at.pausedRemainingMs != null) {
+      countdown.seedMs(at.pausedRemainingMs, at.targetMs);
+      return true;
+    }
+  }
+  if (at.kind === "set-time" && current.value.type === "exercise" && at.setIdx != null) {
+    const st = session.value.setStates[setKey(at.itemId, at.setIdx)] ?? "pending";
+    if (st !== "pending") {
+      session.value.activeTimer = null;
+      return false;
+    }
+    setTimeActive.value = true;
+    setTimeSetIdx.value = at.setIdx;
+    setTimeItem.value = current.value;
+    if (at.endAt != null) {
+      setTimeCountdown.restoreFromWallClock(at.endAt, at.targetMs);
+      if (!setTimeCountdown.finished.value) bindSetTimeLockScreen();
+      return true;
+    }
+    if (at.pausedRemainingMs != null) {
+      setTimeCountdown.seedMs(at.pausedRemainingMs, at.targetMs);
+      return true;
+    }
+  }
+  clearActiveTimer();
+  return false;
+}
+
+const activeLockScreenInfo = computed(() => {
+  if (
+    setRestActive.value &&
+    setRestItem.value &&
+    (countdown.running.value || countdown.paused.value)
+  ) {
+    return {
+      title: "Descanso entre series",
+      subtitle: `${setRestItem.value.name} · Serie ${setRestSetIdx.value + 1} → ${setRestSetIdx.value + 2}`,
+      remainingSec: countdown.seconds.value,
+      totalSec: Math.round(countdown.targetMs.value / 1000),
+      running: countdown.running.value,
+      endAt: countdown.endAt.value,
+    };
+  }
+  if (
+    currentRest.value &&
+    (restCountdown.running.value || restCountdown.paused.value)
+  ) {
+    return {
+      title: currentRest.value.label || "Descanso",
+      subtitle: day.value?.routineName || day.value?.dayName || "Repsy",
+      remainingSec: restCountdown.seconds.value,
+      totalSec: Math.round(restCountdown.targetMs.value / 1000),
+      running: restCountdown.running.value,
+      endAt: restCountdown.endAt.value,
+    };
+  }
+  if (
+    setTimeActive.value &&
+    setTimeItem.value &&
+    (setTimeCountdown.running.value || setTimeCountdown.paused.value)
+  ) {
+    return {
+      title: setTimeItem.value.name,
+      subtitle: `Serie ${setTimeSetIdx.value + 1} de ${setTimeItem.value.sets}`,
+      remainingSec: setTimeCountdown.seconds.value,
+      totalSec: Math.round(setTimeCountdown.targetMs.value / 1000),
+      running: setTimeCountdown.running.value,
+      endAt: setTimeCountdown.endAt.value,
+    };
+  }
+  return null;
+});
+
+watch(activeLockScreenInfo, (info) => {
+  if (info) updateLockScreenMetadata(info);
+});
+
 function startSetRest(setIdx: number) {
   const item = currentExercise.value;
   if (!item) return;
+  unlockAudio();
   setRestActive.value = true;
   setRestSetIdx.value = setIdx;
   setRestItem.value = item;
   countdown.start(item.rest_between_sets);
+  syncActiveTimer("set-rest", item.id, countdown, setIdx);
+  bindSetRestLockScreen();
 }
 
-// Cue sound when the inter-set rest countdown reaches zero (so the user
-// hears the "go" cue even before pressing Terminar).
+function pauseSetRest() {
+  countdown.pause();
+  if (setRestItem.value) {
+    syncActiveTimer("set-rest", setRestItem.value.id, countdown, setRestSetIdx.value);
+  }
+}
+
+function resumeSetRest() {
+  unlockAudio();
+  countdown.resume();
+  if (setRestItem.value) {
+    syncActiveTimer("set-rest", setRestItem.value.id, countdown, setRestSetIdx.value);
+    bindSetRestLockScreen();
+  }
+}
+
+// Cue sound + notificación cuando el descanso entre series llega a cero.
 watch(
   () => countdown.finished.value,
   (done) => {
-    if (done && setRestActive.value) playFinishCue();
+    if (!done || !setRestActive.value) return;
+    playFinishCue();
+    stopLockScreenSession();
+    clearActiveTimer("set-rest");
+    void notifyTimerFinished(
+      "¡Descanso completado!",
+      `${setRestItem.value?.name ?? "Ejercicio"} · Serie ${setRestSetIdx.value + 2} lista`,
+    );
   },
 );
 
@@ -338,7 +571,7 @@ function lastWeightFor(name: string): number {
 }
 
 watch(current, (c) => {
-  endSetTime();
+  if (sessionReady.value) endSetTime();
   if (c?.type === "exercise") {
     currentWeight.value = lastWeights.value[c.name] ?? lastWeightFor(c.name);
   } else {
@@ -350,16 +583,37 @@ function endSetRest() {
   countdown.stop();
   setRestActive.value = false;
   setRestItem.value = null;
+  clearActiveTimer("set-rest");
+  if (!setTimeActive.value) stopLockScreenSession();
 }
 
 // ── Time-based set timer ──────────────────────────────────────────────
 function startSetTime(setIdx: number) {
   const item = currentExercise.value;
   if (!item) return;
+  unlockAudio();
   setTimeActive.value = true;
   setTimeSetIdx.value = setIdx;
   setTimeItem.value = item;
   setTimeCountdown.start(item.time);
+  syncActiveTimer("set-time", item.id, setTimeCountdown, setIdx);
+  bindSetTimeLockScreen();
+}
+
+function pauseSetTime() {
+  setTimeCountdown.pause();
+  if (setTimeItem.value) {
+    syncActiveTimer("set-time", setTimeItem.value.id, setTimeCountdown, setTimeSetIdx.value);
+  }
+}
+
+function resumeSetTime() {
+  unlockAudio();
+  setTimeCountdown.resume();
+  if (setTimeItem.value) {
+    syncActiveTimer("set-time", setTimeItem.value.id, setTimeCountdown, setTimeSetIdx.value);
+    bindSetTimeLockScreen();
+  }
 }
 
 function endSetTime() {
@@ -367,6 +621,8 @@ function endSetTime() {
   setTimeActive.value = false;
   setTimeItem.value = null;
   setTimeSetIdx.value = -1;
+  clearActiveTimer("set-time");
+  if (!setRestActive.value) stopLockScreenSession();
 }
 
 function completeSetWithWeight(i: number) {
@@ -412,7 +668,13 @@ watch(
   (done) => {
     if (!done || !setTimeActive.value) return;
     playFinishCue();
+    clearActiveTimer("set-time");
     const idx = setTimeSetIdx.value;
+    const itemName = setTimeItem.value?.name ?? "Ejercicio";
+    void notifyTimerFinished(
+      "¡Serie completada!",
+      `${itemName} · Serie ${idx + 1}`,
+    );
     if (idx >= 0) completeTimeSet(idx);
   },
 );
@@ -494,8 +756,11 @@ function seedCurrentRest() {
 function beginRest() {
   const item = currentRest.value;
   if (!item) return;
+  unlockAudio();
   touch();
   restCountdown.start(item.duration);
+  syncActiveTimer("rest-item", item.id, restCountdown);
+  bindRestLockScreen();
 }
 
 function pauseRest() {
@@ -503,11 +768,27 @@ function pauseRest() {
   if (!item) return;
   touch();
   restCountdown.pause();
+  if (restCountdown.finished.value) return;
   saveRestRemaining(item);
+  syncActiveTimer("rest-item", item.id, restCountdown);
 }
 
 function resumeRest() {
+  const item = currentRest.value;
+  if (!item) return;
+  unlockAudio();
   restCountdown.resume();
+  syncActiveTimer("rest-item", item.id, restCountdown);
+  bindRestLockScreen();
+}
+
+function addRestTime(seconds: number) {
+  const item = currentRest.value;
+  if (!item) return;
+  touch();
+  restCountdown.add(seconds);
+  if (restCountdown.paused.value) saveRestRemaining(item);
+  syncActiveTimer("rest-item", item.id, restCountdown);
 }
 
 function skipRest() {
@@ -516,6 +797,10 @@ function skipRest() {
   if (!item) return;
   touch();
   restCountdown.stop();
+  delete session.value.restElapsed[item.id];
+  delete session.value.restCycle[item.id];
+  clearActiveTimer("rest-item");
+  stopLockScreenSession();
   session.value.itemStates[item.id] = "done";
 }
 
@@ -529,8 +814,16 @@ watch(
     if (item?.type !== "rest") return;
     if (!session.value || session.value.itemStates[item.id] === "done") return;
     playFinishCue();
+    stopLockScreenSession();
+    clearActiveTimer("rest-item");
+    delete session.value.restElapsed[item.id];
+    delete session.value.restCycle[item.id];
     touch();
     session.value.itemStates[item.id] = "done";
+    void notifyTimerFinished(
+      "¡Descanso completado!",
+      `${item.label || "Descanso"} · Hora de continuar`,
+    );
   },
 );
 
@@ -542,6 +835,7 @@ function flush() {
 }
 
 watch(displayIdx, () => {
+  if (!sessionReady.value) return;
   seedCurrentRest();
   endSetRest();
   endSetTime();
@@ -603,6 +897,9 @@ function finish() {
   stopwatch.stop();
   endSetRest();
   endSetTime();
+  clearActiveTimer();
+  stopLockScreenSession();
+  void releaseWakeLock();
   playFinishCue();
   completeSession(session.value.id);
   navigateTo("/calendario");
@@ -621,7 +918,11 @@ function confirmLeave() {
     finish();
     return;
   }
-  flush();
+  if (current.value?.type === "rest" && restCountdown.running.value) {
+    pauseRest();
+  } else {
+    flush();
+  }
   countdown.stop();
   restCountdown.stop();
   setTimeCountdown.stop();
@@ -629,6 +930,8 @@ function confirmLeave() {
   stopwatch.stop();
   endSetRest();
   endSetTime();
+  stopLockScreenSession();
+  void releaseWakeLock();
   navigateTo(`/dia/${day.value?.id}`);
 }
 </script>

@@ -96,6 +96,18 @@ export interface Day {
 
 export type SetState = 'pending' | 'done' | 'skipped'
 export type ItemRunState = 'pending' | 'active' | 'done'
+export type ActiveTimerKind = 'set-rest' | 'rest-item' | 'set-time'
+
+export interface ActiveTimerState {
+  kind: ActiveTimerKind
+  itemId: string
+  setIdx?: number
+  targetMs: number
+  /** Timestamp epoch (ms) en que termina si está corriendo */
+  endAt?: number
+  /** Milisegundos restantes si está pausado */
+  pausedRemainingMs?: number
+}
 
 export interface RunSession {
   id: string
@@ -110,6 +122,7 @@ export interface RunSession {
   setWeights: Record<string, number>
   restElapsed: Record<string, number>
   restCycle: Record<string, number>
+  activeTimer?: ActiveTimerState | null
 }
 
 export interface GymData {

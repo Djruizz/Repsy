@@ -57,7 +57,7 @@
           <Transition name="dropdown">
             <div
               v-if="menuOpen"
-              class="absolute right-0 z-50 overflow-hidden border shadow-xl top-11 w-52 rounded-xl border-white/10 bg-ink-800"
+              class="absolute right-0 z-50 overflow-hidden border shadow-xl top-11 w-60 rounded-xl border-white/10 bg-ink-800"
             >
               <template v-if="isLoggedIn">
                 <div class="flex items-center gap-3 px-4 py-3 border-b border-white/5">
@@ -105,6 +105,44 @@
                   />
                   {{ muted ? "Activar sonido" : "Silenciar" }}
                 </button>
+                <button
+                  class="flex items-center justify-between w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
+                  @click="onToggleNotifications"
+                >
+                  <span class="flex items-center gap-3">
+                    <AppIcon
+                      :name="canNotify ? 'bell' : 'bell-off'"
+                      class="w-4 h-4"
+                      :class="canNotify ? 'text-lime' : ''"
+                    />
+                    Notificaciones
+                  </span>
+                  <span
+                    class="text-[10px] font-bold uppercase tracking-wider"
+                    :class="canNotify ? 'text-lime' : 'text-slate-500'"
+                  >
+                    {{ canNotify ? "ON" : "OFF" }}
+                  </span>
+                </button>
+                <button
+                  class="flex items-center justify-between w-full gap-3 px-4 py-3 text-sm transition text-slate-300 hover:bg-white/5 hover:text-white"
+                  @click="toggleLockScreen"
+                >
+                  <span class="flex items-center gap-3">
+                    <AppIcon
+                      name="lock"
+                      class="w-4 h-4"
+                      :class="lockScreenEnabled ? 'text-lime' : ''"
+                    />
+                    Timer en bloqueo
+                  </span>
+                  <span
+                    class="text-[10px] font-bold uppercase tracking-wider"
+                    :class="lockScreenEnabled ? 'text-lime' : 'text-slate-500'"
+                  >
+                    {{ lockScreenEnabled ? "ON" : "OFF" }}
+                  </span>
+                </button>
               </div>
             </div>
           </Transition>
@@ -114,20 +152,42 @@
 
     <LazyImportDialog v-if="showImport" @close="showImport = false" />
     <LazyAuthDialog v-if="showAuth" @close="showAuth = false" />
+    <BaseModal
+      :open="!!notifNotice"
+      title="Notificaciones"
+      @close="notifNotice = ''"
+    >
+      <p class="text-sm leading-relaxed text-slate-300">
+        {{ notifNotice }}
+      </p>
+      <template #footer>
+        <button class="w-full btn-primary" @click="notifNotice = ''">
+          Entendido
+        </button>
+      </template>
+    </BaseModal>
   </header>
 </template>
 
 <script setup lang="ts">
 import { useSoundCue } from "~/composables/useSoundCue";
+import { useTimerNotifications } from "~/composables/useTimerNotifications";
 import { localDayKey, todayKey } from "~/composables/useCalendar";
 
 const { exportData, sessions, resetAll } = useGymData();
 const { muted, toggleMuted } = useSoundCue();
+const {
+  canNotify,
+  lockScreenEnabled,
+  toggleNotifications,
+  toggleLockScreen,
+} = useTimerNotifications();
 const { isLoggedIn, userEmail, logout } = useAuth();
 const { lastError, clearDeviceOwnership } = useSync();
 const showImport = ref(false);
 const showAuth = ref(false);
 const menuOpen = ref(false);
+const notifNotice = ref("");
 
 // Solo sesiones activas de hoy: una sesión de otro día llevaría a un
 // runner bloqueado ("no es tu día") y nunca podría finalizarse.
@@ -182,6 +242,22 @@ function onExport() {
 
 function onToggleMute() {
   toggleMuted();
+}
+
+async function onToggleNotifications() {
+  const res = await toggleNotifications();
+  if (res.ok) return;
+  menuOpen.value = false;
+  if (res.reason === "ios-install-required") {
+    notifNotice.value =
+      'En iPhone/iPad las notificaciones solo funcionan con la app instalada: pulsa Compartir → "Agregar a pantalla de inicio" y abre Repsy desde tu pantalla de inicio.';
+  } else if (res.reason === "denied") {
+    notifNotice.value =
+      "El permiso de notificaciones está bloqueado para este sitio. Habilítalo en los ajustes del navegador o de la app para recibir avisos al terminar los descansos.";
+  } else {
+    notifNotice.value =
+      "Este navegador no soporta notificaciones del sistema. Seguirás teniendo sonido, vibración y el contador en la pantalla de bloqueo.";
+  }
 }
 
 function closeOnOutside(e: MouseEvent) {
